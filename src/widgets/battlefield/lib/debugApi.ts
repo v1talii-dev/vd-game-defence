@@ -1,15 +1,30 @@
+import type Phaser from 'phaser'
 import { useBattleSession, type Replay } from '@/entities/battle'
 import type { Command } from '@/entities/battle'
 import type { LevelData } from '@/entities/level'
+import { tileCenterToScreen } from '@/shared/lib/iso'
 
 /** window.__game для e2e и отладки. Подключается только динамическим import в dev/test. */
-export function installGameApi(level: LevelData): () => void {
+export function installGameApi(level: LevelData, game: Phaser.Game): () => void {
   const session = useBattleSession()
   const api = {
     get state() {
       return session.battle?.state ?? null
     },
     session,
+    level,
+    /**
+     * Центрирует камеру на клетке и возвращает client-координаты её центра (центр канваса).
+     * После вызова надо дождаться кадра, чтобы матрица камеры обновилась.
+     */
+    cellToClient(cell: { x: number; y: number }) {
+      const scene = game.scene.getScene('battle')
+      if (!scene) throw new Error('сцена боя не найдена')
+      const w = tileCenterToScreen(cell)
+      scene.cameras.main.centerOn(w.x, w.y)
+      const r = scene.game.canvas.getBoundingClientRect()
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+    },
     dispatch: (cmd: Command) => session.dispatch(cmd),
     step: (n = 1) => session.step(n),
     setSpeed: (x: 1 | 2 | 8) => {

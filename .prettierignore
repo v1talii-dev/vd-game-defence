@@ -8,3 +8,4 @@ public/assets/maps
 *.md
 .claude
 *.md
+dist-test

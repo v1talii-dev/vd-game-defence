@@ -42,7 +42,7 @@ async function load() {
   game = createGame(host.value!, { level, params })
   if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     void import('../lib/debugApi').then((m) => {
-      if (!disposed) uninstallApi = m.installGameApi(level)
+      if (!disposed) uninstallApi = m.installGameApi(level, game!)
     })
   }
 }

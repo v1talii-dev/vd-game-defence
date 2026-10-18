@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     // сборка в режиме test сохраняет window.__game (SPEC §6.5)
-    command: `npx vite build --mode test && npx vite preview --port ${PORT} --strictPort`,
+    command: `npx vite build --mode test --outDir dist-test && npx vite preview --outDir dist-test --port ${PORT} --strictPort`,
     url: BASE,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
