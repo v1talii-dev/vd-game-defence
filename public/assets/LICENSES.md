@@ -57,6 +57,16 @@ PixVoxel Revised Isometric Wargame Sprites — Tommy Ettinger, CC0: https://open
 | boss_* | Tank_P (color2), масштаб 0.95 |
 | explode_0..11 | Tank, fiery_explode (color2) |
 
-## Кандидаты на спрайты (ещё не в проекте)
+## Текстуры земли — `terrain/`
 
-- Tower Defense (top-down) — Kenney, CC0: https://opengameart.org/content/tower-defense-top-down
+Все текстуры — ambientCG, CC0 1.0 (https://docs.ambientcg.com/license/). Исходники 1K JPG уменьшены до 512x512 и пересжаты в JPEG (q0.78). Декор (валуны, кусты, ящики, мешки, бочки, кратеры, колеи) нарисован процедурно кодом проекта (`terrainBake.ts`), сторонних ассетов не использует.
+
+| Файл | Исходный материал | Автор | Источник |
+|---|---|---|---|
+| sand.jpg | Ground080 | ambientCG | https://ambientcg.com/view?id=Ground080 |
+| sand-light.jpg | Ground093C | ambientCG | https://ambientcg.com/view?id=Ground093C |
+| sand-dry.jpg | Ground054 | ambientCG | https://ambientcg.com/view?id=Ground054 |
+| road.jpg | Ground088 | ambientCG | https://ambientcg.com/view?id=Ground088 |
+| rock.jpg | Rock061 | ambientCG | https://ambientcg.com/view?id=Rock061 |
+
+Эффекты (тени, дым, вспышки, виньетка) — процедурные текстуры, генерируются в рантайме (`shared/lib/fx`).

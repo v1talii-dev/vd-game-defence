@@ -6,6 +6,7 @@ import { createProjectileLayer } from '@/entities/projectile'
 import { TOWERS, createTowerLayer, towerStats } from '@/entities/tower'
 import { attachCameraControls, type CameraControls } from '@/features/camera-controls'
 import { worldSize } from '@/shared/lib/iso'
+import { fxOf } from '@/shared/lib/fx'
 import { preloadSprites } from '@/shared/lib/sprites'
 import type { DebugParams } from '@/shared/lib/debug'
 import { createBattleAudio, preloadAudio } from './audio'
@@ -13,7 +14,7 @@ import { createDebugOverlay } from './debugOverlay'
 import { attachBattleInput, type BattleInput } from './input'
 import { createOverlay } from './overlay'
 import { stressSetup, stressWantsWave } from './stress'
-import { drawTerrain, elevationAtTile, tileKey, type Terrain } from './terrain'
+import { drawTerrain, elevationAtTile, preloadTerrain, tileKey, type Terrain } from './terrain'
 
 export interface SceneData {
   level: LevelData
@@ -54,6 +55,7 @@ export class BattleScene extends Phaser.Scene {
 
   preload() {
     preloadSprites(this)
+    preloadTerrain(this)
     preloadAudio(this)
   }
 
@@ -129,6 +131,7 @@ export class BattleScene extends Phaser.Scene {
     this.enemies?.sync(s.enemies, s.tick, alpha)
     this.projectiles?.sync(s.projectiles, s.tick, alpha)
     this.projectiles?.update(dtMs)
+    fxOf(this).update(dtMs)
     if (session.buildType !== null) {
       // Set пересобираем только при смене набора башен
       let hash = s.towers.length

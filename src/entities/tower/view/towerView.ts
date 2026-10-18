@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import { ensureFxTextures, fxOf } from '@/shared/lib/fx'
 import { DEFAULT_ISO, cellToScreen, depthOf } from '@/shared/lib/iso'
 import { faceFromScreen, hasSprite, spriteKey } from '@/shared/lib/sprites'
 import type { TowerType } from '../config/towers'
@@ -14,7 +15,14 @@ const COLORS: Record<TowerType, { main: number; dark: number }> = {
   antiAir: { main: 0x4aa6d9, dark: 0x205a7a },
 }
 
-const SCALE = 0.6
+const SCALE = 0.78
+// цвет вспышки выстрела по типу башни
+const FLASH: Record<TowerType, number> = {
+  machineGun: 0xffe08a,
+  rocket: 0xff9a4a,
+  mortar: 0xffb060,
+  antiAir: 0x8adfff,
+}
 
 export interface TowerView {
   update(t: TowerLike): void
@@ -48,7 +56,7 @@ function drawBody(
   // ранг: шевроны над башней
   g.lineStyle(2, 0xffe066, 1)
   for (let i = 0; i < t.rank; i++) {
-    const y = (sprite ? -48 : -34) - i * 5
+    const y = (sprite ? -62 : -34) - i * 5
     g.lineBetween(-5, y, 0, y - 4)
     g.lineBetween(0, y - 4, 5, y)
   }
@@ -95,10 +103,12 @@ function drawStub(g: Phaser.GameObjects.Graphics, t: TowerLike, hw: number, hh: 
 
 export function createTowerView(scene: Phaser.Scene, t: TowerLike, elev = 0): TowerView {
   const g = scene.add.graphics()
+  ensureFxTextures(scene)
+  const shadow = scene.add.image(3, 3, 'fx_shadow').setDisplaySize(74, 34).setAlpha(0.85)
   const sprite = hasSprite(scene, t.type)
     ? scene.add.image(0, 0, spriteKey(t.type, 0)).setOrigin(0.5, 0.8).setScale(SCALE)
     : null
-  const root = scene.add.container(0, 0, sprite ? [sprite, g] : [g])
+  const root = scene.add.container(0, 0, sprite ? [shadow, sprite, g] : [shadow, g])
   let selected = false
   let kType = ''
   let kLevel = -1
@@ -142,6 +152,10 @@ export function createTowerView(scene: Phaser.Scene, t: TowerLike, elev = 0): To
     },
     fire() {
       if (!sprite) return
+      // вспышка у дула и клуб дыма
+      const fx = fxOf(scene)
+      fx.flash(root.x, root.y - 30, FLASH[cur.type], cur.type === 'mortar' ? 1.1 : 0.7)
+      if (cur.type !== 'machineGun') fx.smoke(root.x, root.y - 28, 0.8)
       // отдача: короткое сжатие по высоте
       scene.tweens.killTweensOf(sprite)
       sprite.setScale(SCALE)
