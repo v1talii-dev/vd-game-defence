@@ -1,0 +1,185 @@
+{
+  "seed": 42,
+  "levelId": "desert-base",
+  "startMoney": 600,
+  "startWave": 1,
+  "commands": [
+    {
+      "tick": 1,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "machineGun",
+        "cell": {
+          "x": 6,
+          "y": 5
+        }
+      }
+    },
+    {
+      "tick": 2,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "machineGun",
+        "cell": {
+          "x": 9,
+          "y": 5
+        }
+      }
+    },
+    {
+      "tick": 3,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "mortar",
+        "cell": {
+          "x": 12,
+          "y": 8
+        }
+      }
+    },
+    {
+      "tick": 716,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "rocket",
+        "cell": {
+          "x": 17,
+          "y": 7
+        }
+      }
+    },
+    {
+      "tick": 1866,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "machineGun",
+        "cell": {
+          "x": 12,
+          "y": 5
+        }
+      }
+    },
+    {
+      "tick": 3905,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "antiAir",
+        "cell": {
+          "x": 15,
+          "y": 5
+        }
+      }
+    },
+    {
+      "tick": 6460,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "rocket",
+        "cell": {
+          "x": 17,
+          "y": 10
+        }
+      }
+    },
+    {
+      "tick": 8188,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "mortar",
+        "cell": {
+          "x": 12,
+          "y": 9
+        }
+      }
+    },
+    {
+      "tick": 9165,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 3
+      }
+    },
+    {
+      "tick": 10396,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "antiAir",
+        "cell": {
+          "x": 17,
+          "y": 13
+        }
+      }
+    },
+    {
+      "tick": 11964,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "rocket",
+        "cell": {
+          "x": 14,
+          "y": 12
+        }
+      }
+    },
+    {
+      "tick": 12413,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 50
+      }
+    },
+    {
+      "tick": 13436,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 685
+      }
+    },
+    {
+      "tick": 13603,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 465
+      }
+    },
+    {
+      "tick": 13972,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 969
+      }
+    },
+    {
+      "tick": 14949,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "rocket",
+        "cell": {
+          "x": 11,
+          "y": 12
+        }
+      }
+    },
+    {
+      "tick": 15367,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 3
+      }
+    },
+    {
+      "tick": 16467,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 50
+      }
+    },
+    {
+      "tick": 17539,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 685
+      }
+    }
+  ]
+}
