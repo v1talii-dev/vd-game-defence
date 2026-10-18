@@ -223,7 +223,7 @@ src/
 ```
 npm run typecheck   # vue-tsc --noEmit
 npm run lint        # eslint
-npm run lint:fsd    # steiger ./src
+npm run lint:fsd    # steiger ./src — информативно, не блокирует
 npm run test        # vitest run
 npm run e2e         # playwright, обязательно если менялись UI, ввод или сцены
 ```
@@ -306,12 +306,11 @@ Headless-прогоны всей карты на x∞, тест занимает
 | `ui-engineer` | Vue: страницы, HUD, панели, меню, сторы, i18n, сохранения | `pages`, `widgets/*/ui`, `features/*/ui`, `shared/ui`, `entities/progress` | read/write/bash |
 | `balance-designer` | Числа: статы, волны, цены; балансные тесты | `entities/*/config`, `tests/balance` | read/write/bash |
 | `qa-debugger` | E2E, воспроизведение багов, реплеи, перф-замеры, отчёты | `tests/`, `e2e/` (продуктовый код не меняет) | read/write/bash |
-| `fsd-reviewer` | Ревью: границы слоёв, public API, чистота `model/`, лишний код | — (только читает) | read/bash |
 
 Правила взаимодействия:
 
 - Изменения, которые затрагивают зоны двух агентов (например, новая команда симуляции и кнопка в UI), делаем последовательно: сначала `sim-engineer` фиксирует контракт команды или события и тест, потом `ui-engineer` или `render-engineer`.
-- После каждого этапа запускается `fsd-reviewer`, а `qa-debugger` прогоняет весь DoD.
+- После каждого этапа `qa-debugger` прогоняет весь DoD. Строгость FSD на стадии MVP не приоритет.
 - Агенты не добавляют зависимости без согласования с оркестратором.
 
 ## 9. План этапов

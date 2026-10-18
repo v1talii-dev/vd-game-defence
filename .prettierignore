@@ -1,0 +1,10 @@
+dist
+coverage
+playwright-report
+test-results
+package-lock.json
+public/assets/maps
+.claude
+*.md
+.claude
+*.md

@@ -15,7 +15,7 @@ npm run dev          # dev-сервер
 npm run build
 npm run typecheck    # vue-tsc --noEmit
 npm run lint         # eslint
-npm run lint:fsd     # steiger ./src
+npm run lint:fsd     # steiger ./src — информативно, в DoD не входит
 npm run test         # vitest run
 npx vitest run src/entities/tower -t "rank"     # один тест
 npm run e2e                                     # playwright, headless
@@ -24,7 +24,7 @@ npm run e2e:ui                                  # UI-режим Playwright
 npx playwright test e2e/build.spec.ts --project=mobile
 ```
 
-Definition of Done: проходят typecheck, lint, lint:fsd и test; при изменениях UI, ввода или сцен — ещё и e2e.
+Definition of Done: проходят typecheck, lint и test; при изменениях UI, ввода или сцен — ещё и e2e.
 
 Playwright MCP настроен в `.mcp.json` и работает в видимом окне — пользователь наблюдает за процессом. Используй его для ручных и визуальных проверок на `npm run dev`. Если пользователь хочет смотреть e2e-тесты, запускай `e2e:headed`.
 
@@ -45,4 +45,4 @@ CI: `.github/workflows/ci.yml` — DoD + e2e на каждый PR и push в `ma
 
 ## Субагенты
 
-В `.claude/agents/`: `sim-engineer`, `render-engineer`, `ui-engineer`, `balance-designer`, `qa-debugger`, `fsd-reviewer`. Зоны ответственности и правила передачи работы — SPEC §8. Если изменение затрагивает и симуляцию, и UI, первым фиксируется контракт симуляции (команда или событие + тест).
+В `.claude/agents/`: `sim-engineer`, `render-engineer`, `ui-engineer`, `balance-designer`, `qa-debugger`. Зоны ответственности и правила передачи работы — SPEC §8. Модели заданы в frontmatter агентов: исполнители — `sonnet`; `opus` остаётся за оркестратором (основной сессией); если агент не справляется, оркестратор перезапускает задачу на `opus`. Если изменение затрагивает и симуляцию, и UI, первым фиксируется контракт симуляции (команда или событие + тест).

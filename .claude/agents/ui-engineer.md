@@ -1,6 +1,7 @@
 ---
 name: ui-engineer
 description: Реализует оболочку на Vue 3 — страницы, HUD, меню постройки, панель башни, окно результата, настройки, Pinia-сторы, i18n (RU), сохранения в entities/progress. Используй для pages/*, widgets/*/ui, features/*/ui, shared/ui, shared/i18n, entities/progress.
+model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -12,4 +13,4 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 - Мобильные: только альбомная ориентация (в портретной — подсказка повернуть экран), отступы под safe-area, bottom sheet для меню постройки и панели башни, зоны нажатия не меньше 44px.
 - Сохранения: схема с версией `vdgd:save:v1`. Битые или неизвестные данные заменяются дефолтом с предупреждением в лог — никаких падений.
 - Используй `<script setup lang="ts">`, Composition API и компоненты из `shared/ui`.
-- Готово, когда проходят typecheck, lint, lint:fsd, test и `npm run e2e`. В отчёте перечисли, что запускал.
+- Готово, когда проходят typecheck, lint, test и `npm run e2e`. В отчёте перечисли, что запускал.

@@ -1,6 +1,7 @@
 ---
 name: render-engineer
 description: Реализует рендер и ввод на Phaser — изометрические карты из Tiled, спрайты и заглушки, интерполяцию, камеру, ввод мышью, тачем и pinch, debug-оверлей, пулы объектов. Используй для entities/*/view, widgets/battlefield, features/camera-controls, shared/lib/iso, shared/lib/debug.
+model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -13,4 +14,4 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 - Всё должно работать на заглушках (`Phaser.GameObjects.Graphics`), если спрайтов нет.
 - Поддерживай и десктоп, и тач: зоны нажатия не меньше 44px, pinch-зум не должен ломать выбор клетки.
 - Соблюдай FSD: никаких импортов из верхних слоёв и глубоких импортов в чужие слайсы.
-- Готово, когда проходят typecheck, lint, lint:fsd, test и нужные спеки `npm run e2e`. В отчёте перечисли, что запускал.
+- Готово, когда проходят typecheck, lint, test и нужные спеки `npm run e2e`. В отчёте перечисли, что запускал.

@@ -1,6 +1,7 @@
 ---
 name: balance-designer
 description: Настраивает числа игры — статы и цены апгрейдов башен, HP, скорость и награды врагов, состав волн, экономику — и отвечает за headless-балансные тесты. Используй при изменении значений в entities/*/config или тестов в tests/balance.
+model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 

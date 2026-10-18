@@ -10,19 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  detect:
-    runs-on: ubuntu-latest
-    outputs:
-      ready: ${{ steps.check.outputs.ready }}
-    steps:
-      - uses: actions/checkout@v4
-      # shortcut: skips CI until M0 adds package.json, remove this job after that
-      - id: check
-        run: echo "ready=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
   checks:
-    needs: detect
-    if: needs.detect.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +21,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm run lint:fsd
       - run: npm run test
 
   e2e:
-    needs: detect
-    if: needs.detect.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
