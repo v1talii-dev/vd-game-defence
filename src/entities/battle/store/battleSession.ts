@@ -130,7 +130,9 @@ export const useBattleSession = defineStore('battleSession', () => {
 
   function confirmBuild() {
     if (buildType.value && pendingCell.value) {
-      dispatch({ type: 'placeTower', towerType: buildType.value, cell: pendingCell.value })
+      // копия: реактивный Proxy не должен попасть в симуляцию и structuredClone реплея
+      const { x, y } = pendingCell.value
+      dispatch({ type: 'placeTower', towerType: buildType.value, cell: { x, y } })
     }
     pendingCell.value = null
   }

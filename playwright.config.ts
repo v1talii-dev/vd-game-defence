@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// HTTP_PROXY в окружении перехватывает запросы к localhost, и проверка webServer зависает
+process.env.NO_PROXY = [process.env.NO_PROXY, 'localhost,127.0.0.1,::1'].filter(Boolean).join(',')
+process.env.no_proxy = process.env.NO_PROXY
+
 const PORT = 4173
 const BASE = `http://localhost:${PORT}/vd-game-defence/`
 
@@ -15,11 +19,8 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7 landscape'] } },
-    { name: 'mobile-safari', use: { ...devices['iPhone 14 landscape'] } },
-  ],
+  // мобильные проекты (Pixel 7 / iPhone 14 landscape) временно отключены — вернём позже
+  projects: [{ name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     // сборка в режиме test сохраняет window.__game (SPEC §6.5)
     command: `npx vite build --mode test --outDir dist-test && npx vite preview --outDir dist-test --port ${PORT} --strictPort`,

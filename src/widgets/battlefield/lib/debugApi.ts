@@ -11,6 +11,10 @@ export function installGameApi(level: LevelData, game: Phaser.Game): () => void 
     get state() {
       return session.battle?.state ?? null
     },
+    /** сцена прошла preload и create: ввод и камера подключены */
+    get ready() {
+      return game.scene.isActive('battle')
+    },
     session,
     level,
     /**

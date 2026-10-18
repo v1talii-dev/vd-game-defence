@@ -14,6 +14,7 @@ export interface GameApi {
     outcome: { result: 'victory'; stars: number } | { result: 'defeat' } | null
     wave: { phase: 'prep' | 'active'; number: number; total: number }
   } | null
+  ready: boolean
   session: { pendingCell: Cell | null; buildType: string | null; selectedTowerId: number | null }
   level: { width: number; height: number; path: Cell[]; buildable: Cell[] }
   dispatch(cmd: unknown): void
@@ -48,7 +49,8 @@ export async function openBattle(page: Page, query = ''): Promise<void> {
     }
   })
   await page.goto(`./#/battle${query}`)
-  await page.waitForFunction(() => !!window.__game?.state)
+  // state появляется раньше, чем сцена загрузит ассеты и подключит ввод
+  await page.waitForFunction(() => !!window.__game?.state && window.__game.ready)
   await page.locator('[data-testid="battlefield"] canvas').waitFor()
 }
 
