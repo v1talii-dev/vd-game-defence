@@ -15,14 +15,14 @@ export interface EnemyConfig {
 }
 
 export const ENEMIES = {
-  grunt: { armor: 'infantry', hp: 60, speed: 1.6, reward: 7, leak: 1 },
-  grenadier: { armor: 'infantry', hp: 150, speed: 1.1, reward: 14, leak: 2 },
+  grunt: { armor: 'infantry', hp: 45, speed: 1.6, reward: 10, leak: 1 },
+  grenadier: { armor: 'infantry', hp: 120, speed: 1.1, reward: 18, leak: 2 },
   technical: { armor: 'light', hp: 130, speed: 2.6, reward: 16, leak: 2 },
-  tank: { armor: 'tank', hp: 550, speed: 0.9, reward: 40, leak: 4 },
+  tank: { armor: 'tank', hp: 600, speed: 0.9, reward: 40, leak: 4 },
   drone: { armor: 'air', hp: 90, speed: 2.2, reward: 14, leak: 2 },
   boss: {
     armor: 'tank',
-    hp: 6000,
+    hp: 3000,
     speed: 0.6,
     reward: 300,
     leak: 20,

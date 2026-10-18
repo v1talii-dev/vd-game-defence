@@ -1,4 +1,5 @@
-import { TOWERS, upgradeCost, type TowerType } from '@/entities/tower'
+import { TOWERS, TOWER_TYPES, upgradeCost, type TowerType } from '@/entities/tower'
+import { nextRandom, seedRng } from '@/shared/lib/sim'
 import { createBattle, type Battle } from '@/entities/battle'
 import type { LevelData } from '@/entities/level'
 
@@ -78,3 +79,50 @@ export const REFERENCE: readonly BotAction[] = [
   { upgrade: [14, 12] },
   { upgrade: [11, 12] },
 ]
+
+// только пулемёты: все клетки эталона, затем апгрейды по кругу
+export const MACHINE_GUNS_ONLY: readonly BotAction[] = (() => {
+  const cells = REFERENCE.flatMap((a) => ('place' in a ? [a.at] : []))
+  return [
+    ...cells.map((at): BotAction => ({ place: 'machineGun', at })),
+    ...cells.map((at): BotAction => ({ upgrade: at })),
+    ...cells.map((at): BotAction => ({ upgrade: at })),
+  ]
+})()
+
+// случайный бот: действия выбирает собственный ГСЧ с seed (Math.random не используется)
+export function runRandomBot(level: LevelData, seed: number): Battle {
+  const battle = createBattle({ seed, level })
+  let rng = seedRng(seed * 7919 + 13)
+  const roll = (n: number): number => {
+    const [v, next] = nextRandom(rng)
+    rng = next
+    return Math.floor(v * n)
+  }
+  const free = [...level.buildable]
+  let pending = false
+  battle.on('commandApplied', () => (pending = false))
+  while (!battle.state.outcome && battle.state.tick < 30 * 60 * 30) {
+    // решение три раза в секунду
+    if (!pending && battle.state.tick % 10 === 0) {
+      const s = battle.state
+      if (s.towers.length > 0 && roll(2) === 0) {
+        const tower = s.towers[roll(s.towers.length)]!
+        const cost = upgradeCost(tower.type, tower.level)
+        if (cost !== null && s.money >= cost) {
+          battle.dispatch({ type: 'upgradeTower', towerId: tower.id })
+          pending = true
+        }
+      } else if (free.length > 0) {
+        const type = TOWER_TYPES[roll(TOWER_TYPES.length)]!
+        if (s.money >= TOWERS[type].levels[0].cost) {
+          const cell = free.splice(roll(free.length), 1)[0]!
+          battle.dispatch({ type: 'placeTower', towerType: type, cell: { x: cell.x, y: cell.y } })
+          pending = true
+        }
+      }
+    }
+    battle.step()
+  }
+  return battle
+}
