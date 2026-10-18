@@ -128,7 +128,8 @@ export function createEnemyView(scene: Phaser.Scene, e: EnemyState): EnemyView {
 
 /** Синхронизирует виды врагов с состоянием по id, с интерполяцией между тиками */
 export function createEnemyLayer(scene: Phaser.Scene) {
-  const items = new Map<number, { view: EnemyView; pos: Tracked }>()
+  const items = new Map<number, { view: EnemyView; pos: Tracked; gen: number }>()
+  let gen = 0
   // пул спрайтов взрыва
   const pool: Phaser.GameObjects.Sprite[] = []
   if (scene.textures.exists('explode_0') && !scene.anims.exists('explode')) {
@@ -155,21 +156,25 @@ export function createEnemyLayer(scene: Phaser.Scene) {
       })
     },
     sync(enemies: readonly EnemyState[], tick: number, alpha: number) {
-      const seen = new Set<number>()
+      gen++
       for (const e of enemies) {
-        seen.add(e.id)
         let it = items.get(e.id)
         if (!it) {
-          it = { view: createEnemyView(scene, e), pos: trackPosition(undefined, e.x, e.y, tick) }
+          it = {
+            view: createEnemyView(scene, e),
+            pos: trackPosition(undefined, e.x, e.y, tick),
+            gen,
+          }
           items.set(e.id, it)
         }
+        it.gen = gen
         trackPosition(it.pos, e.x, e.y, tick)
         const p = interpolated(it.pos, alpha)
         it.view.setPosition(p.x, p.y)
         it.view.setHp(e.hp, e.maxHp)
       }
       for (const [id, it] of items) {
-        if (!seen.has(id)) {
+        if (it.gen !== gen) {
           it.view.destroy()
           items.delete(id)
         }

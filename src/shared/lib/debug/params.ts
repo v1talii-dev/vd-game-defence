@@ -6,6 +6,8 @@ export interface DebugParams {
   wave?: number
   money?: number
   speed?: SpeedParam
+  /** ?stress=1: 40 башен и поток врагов для замера производительности */
+  stress?: boolean
 }
 
 function int(v: string | null, min: number): number | undefined {
@@ -23,6 +25,7 @@ export function parseDebugParams(query: string): DebugParams {
     seed: int(q.get('seed'), 0),
     wave: int(q.get('wave'), 0),
     money: int(q.get('money'), 0),
+    stress: q.get('stress') === '1' || undefined,
     speed: speed === 1 || speed === 2 || speed === 8 ? speed : undefined,
   }
 }

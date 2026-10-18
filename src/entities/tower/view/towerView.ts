@@ -100,7 +100,10 @@ export function createTowerView(scene: Phaser.Scene, t: TowerLike, elev = 0): To
     : null
   const root = scene.add.container(0, 0, sprite ? [sprite, g] : [g])
   let selected = false
-  let key = ''
+  let kType = ''
+  let kLevel = -1
+  let kRank = -1
+  let kSel = false
   let cur = t
   const place = (x: number, y: number, e = elev) => {
     elev = e
@@ -109,9 +112,12 @@ export function createTowerView(scene: Phaser.Scene, t: TowerLike, elev = 0): To
     root.setDepth(depthOf({ x, y }))
   }
   const redraw = () => {
-    const k = `${cur.type}${cur.level}${cur.rank}${selected}`
-    if (k === key) return
-    key = k
+    if (cur.type === kType && cur.level === kLevel && cur.rank === kRank && selected === kSel)
+      return
+    kType = cur.type
+    kLevel = cur.level
+    kRank = cur.rank
+    kSel = selected
     drawBody(g, cur, selected, !!sprite)
   }
   place(t.x, t.y)
@@ -156,38 +162,40 @@ export function createTowerLayer(
   scene: Phaser.Scene,
   elevationAt: (x: number, y: number) => number = () => 0,
 ) {
-  const views = new Map<number, TowerView>()
+  const views = new Map<number, { v: TowerView; gen: number }>()
+  let gen = 0
   return {
     sync(
       towers: readonly TowerState[],
       selectedId: number | null,
       enemies: readonly { id: number; x: number; y: number }[] = [],
     ) {
-      const seen = new Set<number>()
+      gen++
       for (const t of towers) {
-        seen.add(t.id)
-        let v = views.get(t.id)
-        if (!v) {
-          v = createTowerView(scene, t, elevationAt(t.x, t.y))
-          views.set(t.id, v)
+        let it = views.get(t.id)
+        if (!it) {
+          it = { v: createTowerView(scene, t, elevationAt(t.x, t.y)), gen }
+          views.set(t.id, it)
         }
+        it.gen = gen
+        const v = it.v
         v.update(t)
         v.setSelected(t.id === selectedId)
         const target = t.targetId === null ? undefined : enemies.find((e) => e.id === t.targetId)
         if (target) v.aimAt(target.x, target.y)
       }
-      for (const [id, v] of views) {
-        if (!seen.has(id)) {
-          v.destroy()
+      for (const [id, it] of views) {
+        if (it.gen !== gen) {
+          it.v.destroy()
           views.delete(id)
         }
       }
     },
     fire(towerId: number) {
-      views.get(towerId)?.fire()
+      views.get(towerId)?.v.fire()
     },
     clear() {
-      for (const v of views.values()) v.destroy()
+      for (const it of views.values()) it.v.destroy()
       views.clear()
     },
   }

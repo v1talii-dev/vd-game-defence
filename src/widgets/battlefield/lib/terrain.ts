@@ -128,19 +128,19 @@ export function drawTerrain(scene: Phaser.Scene, level: LevelData): Terrain {
   hq.fillTriangle(-18, -34, 18, -34, 0, -46)
 
   const hi = scene.add.graphics().setDepth(-5e5).setVisible(false)
-  let lastKey = ''
+  let lastSet: Set<string> | null = null
 
   return {
     buildable,
     showBuildable(on, occupied) {
       hi.setVisible(on)
       if (!on) {
-        lastKey = ''
+        lastSet = null
         return
       }
-      const k = [...occupied].join('|')
-      if (k === lastKey) return
-      lastKey = k
+      // вызывающий отдаёт один и тот же Set, пока набор занятых клеток не менялся
+      if (occupied === lastSet) return
+      lastSet = occupied
       hi.clear()
       for (const p of level.buildable) {
         if (occupied.has(key(p.x, p.y))) continue

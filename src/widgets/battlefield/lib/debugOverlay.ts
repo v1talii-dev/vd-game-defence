@@ -45,14 +45,18 @@ export function createDebugOverlay(scene: Phaser.Scene, level: LevelData, enable
       on = !on
       apply()
     },
-    update(battle: Battle) {
+    update(battle: Battle, timing?: { frameMs: number; simMs: number }) {
       if (!on) return
       const cam = scene.cameras.main
       const s = battle.state
       stat.setScale(1 / cam.zoom)
       stat.setPosition(cam.worldView.x + 8 / cam.zoom, cam.worldView.y + 8 / cam.zoom)
       stat.setText(
-        `FPS ${Math.round(scene.game.loop.actualFps)}\ntick ${s.tick}\n` +
+        `FPS ${Math.round(scene.game.loop.actualFps)}` +
+          (timing
+            ? ` кадр ${timing.frameMs.toFixed(1)} мс, сим ${timing.simMs.toFixed(2)} мс`
+            : '') +
+          `\ntick ${s.tick}\n` +
           `враги ${s.enemies.length} башни ${s.towers.length} снаряды ${s.projectiles.length}`,
       )
       dyn.clear()

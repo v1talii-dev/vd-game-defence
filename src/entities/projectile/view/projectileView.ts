@@ -50,8 +50,10 @@ export function createProjectileLayer(scene: Phaser.Scene) {
       ty: number
       splash: number
       kind: string
+      gen: number
     }
   >()
+  let gen = 0
   const freeProj: Phaser.GameObjects.Graphics[] = []
   const fxPool: Fx[] = []
 
@@ -95,9 +97,8 @@ export function createProjectileLayer(scene: Phaser.Scene) {
 
   return {
     sync(projectiles: readonly ProjectileState[], tick: number, alpha: number) {
-      const seen = new Set<number>()
+      gen++
       for (const pr of projectiles) {
-        seen.add(pr.id)
         let it = tracked.get(pr.id)
         if (!it) {
           const g = acquireProj()
@@ -109,9 +110,11 @@ export function createProjectileLayer(scene: Phaser.Scene) {
             ty: pr.ty,
             splash: pr.splash,
             kind: pr.damageType,
+            gen,
           }
           tracked.set(pr.id, it)
         }
+        it.gen = gen
         trackPosition(it.pos, pr.x, pr.y, tick)
         it.tx = pr.tx
         it.ty = pr.ty
@@ -125,7 +128,7 @@ export function createProjectileLayer(scene: Phaser.Scene) {
         }
       }
       for (const [id, it] of tracked) {
-        if (seen.has(id)) continue
+        if (it.gen === gen) continue
         // исчез из состояния — значит долетел: эффект в точке назначения
         spawnFx(it.tx, it.ty, it.splash)
         it.g.setVisible(false).setRotation(0)
