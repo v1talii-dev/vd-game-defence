@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const PORT = 4173
-const BASE = `http://127.0.0.1:${PORT}/vd-game-defence/`
+const BASE = `http://localhost:${PORT}/vd-game-defence/`
 
 export default defineConfig({
   testDir: 'e2e',
@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     // сборка в режиме test сохраняет window.__game (SPEC §6.5)
-    command: `npx vite build --mode test && npx vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
+    command: `npx vite build --mode test && npx vite preview --port ${PORT} --strictPort`,
     url: BASE,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
