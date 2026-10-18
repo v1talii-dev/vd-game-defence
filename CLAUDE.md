@@ -28,6 +28,8 @@ Definition of Done: проходят typecheck, lint, lint:fsd и test; при �
 
 Playwright MCP настроен в `.mcp.json` и работает в видимом окне — пользователь наблюдает за процессом. Используй его для ручных и визуальных проверок на `npm run dev`. Если пользователь хочет смотреть e2e-тесты, запускай `e2e:headed`.
 
+CI: `.github/workflows/ci.yml` — DoD + e2e на каждый PR и push в `main`.
+
 Деплой: GitHub Pages через `.github/workflows/deploy-pages.yml` при push в `main` (репозиторий `v1talii-dev/vd-game-defence`). В Vite должен быть `base: '/vd-game-defence/'`.
 
 ## Правила архитектуры

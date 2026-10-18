@@ -40,7 +40,7 @@
 | Сохранения | `localStorage`, схема с версией | Прогресс и настройки |
 | Форматирование | Prettier | Единый стиль кода, без споров |
 | Рантайм | Node 24 LTS (`.nvmrc`, `engines`) | — |
-| CI | GitHub Actions | Прогон Definition of Done (§6.1) на каждый PR |
+| CI | GitHub Actions: `.github/workflows/ci.yml` | Прогон Definition of Done (§6.1) на каждый PR и push в `main`; при падении e2e выгружает отчёт Playwright (trace, видео) как артефакт |
 | Хостинг | GitHub Pages: `.github/workflows/deploy-pages.yml`, деплой при push в `main` | Репозиторий `v1talii-dev/vd-game-defence`. В Vite нужен `base: '/vd-game-defence/'`, роутинг hash — поэтому 404 при обновлении страницы не бывает |
 | Отладка через агента | Playwright MCP (`.mcp.json`), видимое окно браузера | Claude открывает игру, кликает и делает скриншоты, а пользователь видит процесс |
 
