@@ -6,7 +6,9 @@ import { createProjectileLayer } from '@/entities/projectile'
 import { TOWERS, createTowerLayer, towerStats } from '@/entities/tower'
 import { attachCameraControls, type CameraControls } from '@/features/camera-controls'
 import { worldSize } from '@/shared/lib/iso'
+import { preloadSprites } from '@/shared/lib/sprites'
 import type { DebugParams } from '@/shared/lib/debug'
+import { createBattleAudio, preloadAudio } from './audio'
 import { createDebugOverlay } from './debugOverlay'
 import { attachBattleInput, type BattleInput } from './input'
 import { createOverlay } from './overlay'
@@ -31,6 +33,8 @@ export class BattleScene extends Phaser.Scene {
   private enemies?: ReturnType<typeof createEnemyLayer>
   private projectiles?: ReturnType<typeof createProjectileLayer>
   private lastBattle: unknown = null
+  private audio?: ReturnType<typeof createBattleAudio>
+  private unbind?: () => void
 
   constructor() {
     super('battle')
@@ -39,6 +43,11 @@ export class BattleScene extends Phaser.Scene {
   init(data: SceneData) {
     this.level = data.level
     this.params = data.params
+  }
+
+  preload() {
+    preloadSprites(this)
+    preloadAudio(this)
   }
 
   create() {
@@ -65,6 +74,11 @@ export class BattleScene extends Phaser.Scene {
       this.debug?.toggle(),
     )
     this.cameras.main.centerOn(size.width / 2, size.height / 2)
+    this.audio = createBattleAudio(this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.unbind?.()
+      this.audio?.destroy()
+    })
   }
 
   override update(_time: number, dtMs: number) {
@@ -77,10 +91,15 @@ export class BattleScene extends Phaser.Scene {
       this.towers?.clear()
       this.enemies?.clear()
       this.projectiles?.clear()
+      this.unbind?.()
+      this.unbind = this.audio?.bind(battle, {
+        fired: (id) => this.towers?.fire(id),
+        killed: (id) => this.enemies?.explode(id),
+      })
     }
     const alpha = session.paused || session.outcome ? 1 : session.advance(dtMs)
     const s = battle.state
-    this.towers?.sync(s.towers, session.selectedTowerId)
+    this.towers?.sync(s.towers, session.selectedTowerId, s.enemies)
     this.enemies?.sync(s.enemies, s.tick, alpha)
     this.projectiles?.sync(s.projectiles, s.tick, alpha)
     this.projectiles?.update(dtMs)

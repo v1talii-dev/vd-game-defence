@@ -1,13 +1,25 @@
 import type Phaser from 'phaser'
 import { cellToScreen, depthOf, interpolated, trackPosition, type Tracked } from '@/shared/lib/iso'
+import { EXPLODE_FRAMES, faceFromScreen, hasSprite, spriteKey } from '@/shared/lib/sprites'
 import type { EnemyType } from '../config/enemies'
 import type { EnemyState } from '../model/enemy'
 
 const AIR_HEIGHT = 28
 const BAR_W = 24
+// масштаб спрайта 88x108 под тайл 64x32; босс крупнее
+const SCALE: Partial<Record<EnemyType, number>> = { boss: 0.95 }
+const BASE_SCALE = 0.55
 
-function drawBody(g: Phaser.GameObjects.Graphics, type: EnemyType) {
+function drawBody(g: Phaser.GameObjects.Graphics, type: EnemyType, sprite: boolean) {
   g.clear()
+  if (sprite) {
+    // со спрайтом остаётся только тень летающих
+    if (type === 'drone') {
+      g.fillStyle(0x3a3a3a, 0.35)
+      g.fillEllipse(0, 0, 16, 8)
+    }
+    return
+  }
   switch (type) {
     case 'grunt':
       g.fillStyle(0xb5533c, 1)
@@ -52,6 +64,10 @@ function drawBody(g: Phaser.GameObjects.Graphics, type: EnemyType) {
 }
 
 export interface EnemyView {
+  /** экранная позиция корня */
+  readonly x: number
+  readonly y: number
+  readonly scale: number
   setPosition(cellX: number, cellY: number): void
   setHp(hp: number, maxHp: number): void
   destroy(): void
@@ -60,13 +76,38 @@ export interface EnemyView {
 export function createEnemyView(scene: Phaser.Scene, e: EnemyState): EnemyView {
   const body = scene.add.graphics()
   const bar = scene.add.graphics()
-  const root = scene.add.container(0, 0, [body, bar])
-  drawBody(body, e.type)
-  const barY = (e.air ? -AIR_HEIGHT : e.type === 'boss' ? -44 : -24) - 8
+  const scale = SCALE[e.type] ?? BASE_SCALE
+  const sprite = hasSprite(scene, e.type)
+    ? scene.add
+        .image(0, e.air ? -AIR_HEIGHT : 0, spriteKey(e.type, 0))
+        .setOrigin(0.5, 0.8)
+        .setScale(scale)
+    : null
+  const root = scene.add.container(0, 0, sprite ? [body, sprite, bar] : [body, bar])
+  drawBody(body, e.type, !!sprite)
+  let face = 0
+  let prev: { x: number; y: number } | null = null
+  const barY = (e.air ? -AIR_HEIGHT : e.type === 'boss' ? -44 : -24) - 8 - (sprite ? 22 : 0)
   let lastHp = NaN
   const view: EnemyView = {
+    get x() {
+      return root.x
+    },
+    get y() {
+      return root.y
+    },
+    scale,
     setPosition(x, y) {
       const p = cellToScreen({ x, y })
+      if (sprite && prev) {
+        // направление по смещению на экране; при остановке остаёмся с прежним
+        const f = faceFromScreen(p.x - prev.x, p.y - prev.y)
+        if (f !== null && f !== face) {
+          face = f
+          sprite.setTexture(spriteKey(e.type, f))
+        }
+      }
+      prev = p
       root.setPosition(p.x, p.y)
       root.setDepth(depthOf({ x, y }) + (e.air ? 1000 : 0))
     },
@@ -88,7 +129,31 @@ export function createEnemyView(scene: Phaser.Scene, e: EnemyState): EnemyView {
 /** Синхронизирует виды врагов с состоянием по id, с интерполяцией между тиками */
 export function createEnemyLayer(scene: Phaser.Scene) {
   const items = new Map<number, { view: EnemyView; pos: Tracked }>()
+  // пул спрайтов взрыва
+  const pool: Phaser.GameObjects.Sprite[] = []
+  if (scene.textures.exists('explode_0') && !scene.anims.exists('explode')) {
+    scene.anims.create({
+      key: 'explode',
+      frames: Array.from({ length: EXPLODE_FRAMES }, (_, i) => ({ key: `explode_${i}` })),
+      frameRate: 24,
+    })
+  }
   return {
+    /** взрыв на месте врага; вызывать до следующего sync, пока вид ещё жив */
+    explode(id: number) {
+      const it = items.get(id)
+      if (!it || !scene.anims.exists('explode')) return
+      const s = pool.pop() ?? scene.add.sprite(0, 0, 'explode_0').setOrigin(0.5, 0.8)
+      s.setVisible(true)
+        .setPosition(it.view.x, it.view.y)
+        .setScale(it.view.scale)
+        .setDepth(it.view.y + 2000)
+      s.play('explode')
+      s.once('animationcomplete', () => {
+        s.setVisible(false)
+        pool.push(s)
+      })
+    },
     sync(enemies: readonly EnemyState[], tick: number, alpha: number) {
       const seen = new Set<number>()
       for (const e of enemies) {
@@ -113,6 +178,8 @@ export function createEnemyLayer(scene: Phaser.Scene) {
     clear() {
       for (const it of items.values()) it.view.destroy()
       items.clear()
+      for (const s of pool) s.destroy()
+      pool.length = 0
     },
   }
 }

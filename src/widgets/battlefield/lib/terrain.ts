@@ -101,8 +101,15 @@ export function drawTerrain(scene: Phaser.Scene, level: LevelData): Terrain {
   marks.fillStyle(0xaa2a2a, 0.9)
   marks.fillEllipse(sp.x, sp.y, 40, 20)
   marks.setDepth(depthOf(level.spawn) - 1)
-  const hq = scene.add.graphics()
   const hp = cellToScreen(level.hq)
+  if (scene.textures.exists('hq_0')) {
+    scene.add
+      .image(hp.x, hp.y, 'hq_0')
+      .setOrigin(0.5, 0.8)
+      .setScale(0.9)
+      .setDepth(depthOf(level.hq))
+  }
+  const hq = scene.add.graphics().setVisible(!scene.textures.exists('hq_0'))
   hq.setPosition(hp.x, hp.y)
   hq.setDepth(depthOf(level.hq))
   hq.fillStyle(0x3a4a5a, 1)
