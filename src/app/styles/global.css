@@ -1,0 +1,20 @@
+:root {
+  --c-bg: #1c1a14;
+  --c-sand: #c9a86a;
+  --c-text: #f0e6d0;
+  --c-accent: #d9822b;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  font-family: system-ui, sans-serif;
+  color: var(--c-text);
+  background: var(--c-bg);
+}
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}

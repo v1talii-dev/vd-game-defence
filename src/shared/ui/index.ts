@@ -1,0 +1,4 @@
+export { default as UiButton } from './UiButton.vue'
+export { default as UiPanel } from './UiPanel.vue'
+export { default as UiIcon } from './UiIcon.vue'
+export { default as UiDialog } from './UiDialog.vue'
