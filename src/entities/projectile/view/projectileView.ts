@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import { fxOf } from '@/shared/lib/fx'
 import {
   cellToScreen,
   depthOf,
@@ -50,6 +51,7 @@ export function createProjectileLayer(scene: Phaser.Scene) {
       ty: number
       splash: number
       kind: string
+      n: number
       gen: number
     }
   >()
@@ -70,6 +72,15 @@ export function createProjectileLayer(scene: Phaser.Scene) {
       fxPool.push(fx)
     }
     const p = cellToScreen({ x, y })
+    const e = fxOf(scene)
+    if (splash > 0) {
+      e.flash(p.x, p.y - 8, 0xffa040, 1.5 + splash)
+      e.ring(p.x, p.y, 0.9 + splash * 0.8, 0xffc070)
+      e.smoke(p.x, p.y - 10, 1.2 + splash * 0.4)
+      e.scorch(p.x, p.y, 0.45 + splash * 0.35)
+    } else {
+      e.flash(p.x, p.y - FLY_HEIGHT / 2, 0xfff0b0, 0.6)
+    }
     fx.g.setPosition(p.x, p.y)
     fx.g.setDepth(depthOf({ x, y }) + 1)
     fx.g.setVisible(true)
@@ -110,6 +121,7 @@ export function createProjectileLayer(scene: Phaser.Scene) {
             ty: pr.ty,
             splash: pr.splash,
             kind: pr.damageType,
+            n: 0,
             gen,
           }
           tracked.set(pr.id, it)
@@ -122,6 +134,9 @@ export function createProjectileLayer(scene: Phaser.Scene) {
         const s = cellToScreen(p)
         it.g.setPosition(s.x, s.y - FLY_HEIGHT)
         it.g.setDepth(depthOf(p) + 500)
+        // дымный след у ракет и снарядов миномёта
+        if ((it.kind === 'rocket' || it.splash > 0) && ++it.n % 3 === 0)
+          fxOf(scene).smoke(s.x, s.y - FLY_HEIGHT, it.kind === 'rocket' ? 0.5 : 0.35, s.y + 400)
         if (it.kind === 'rocket' || it.kind === 'antiAir') {
           const t = cellToScreen({ x: pr.tx, y: pr.ty })
           it.g.setRotation(Math.atan2(t.y - s.y, t.x - s.x))

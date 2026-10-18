@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import { ensureFxTextures, fxOf } from '@/shared/lib/fx'
 import { cellToScreen, depthOf, interpolated, trackPosition, type Tracked } from '@/shared/lib/iso'
 import { EXPLODE_FRAMES, faceFromScreen, hasSprite, spriteKey } from '@/shared/lib/sprites'
 import type { EnemyType } from '../config/enemies'
@@ -7,8 +8,10 @@ import type { EnemyState } from '../model/enemy'
 const AIR_HEIGHT = 28
 const BAR_W = 24
 // масштаб спрайта 88x108 под тайл 64x32; босс крупнее
-const SCALE: Partial<Record<EnemyType, number>> = { boss: 0.95 }
-const BASE_SCALE = 0.55
+const SCALE: Partial<Record<EnemyType, number>> = { boss: 1.25 }
+const BASE_SCALE = 0.72
+// ширина тени на земле по типу врага, px
+const SHADOW_W: Partial<Record<EnemyType, number>> = { boss: 96, tank: 70, technical: 56 }
 
 function drawBody(g: Phaser.GameObjects.Graphics, type: EnemyType, sprite: boolean) {
   g.clear()
@@ -83,11 +86,17 @@ export function createEnemyView(scene: Phaser.Scene, e: EnemyState): EnemyView {
         .setOrigin(0.5, 0.8)
         .setScale(scale)
     : null
-  const root = scene.add.container(0, 0, sprite ? [body, sprite, bar] : [body, bar])
+  ensureFxTextures(scene)
+  const sw = SHADOW_W[e.type] ?? 44
+  const shadow = scene.add
+    .image(2, 2, 'fx_shadow')
+    .setDisplaySize(sw, sw / 2)
+    .setAlpha(e.air ? 0.5 : 0.85)
+  const root = scene.add.container(0, 0, sprite ? [shadow, body, sprite, bar] : [shadow, body, bar])
   drawBody(body, e.type, !!sprite)
   let face = 0
   let prev: { x: number; y: number } | null = null
-  const barY = (e.air ? -AIR_HEIGHT : e.type === 'boss' ? -44 : -24) - 8 - (sprite ? 22 : 0)
+  const barY = (e.air ? -AIR_HEIGHT : e.type === 'boss' ? -44 : -24) - 8 - (sprite ? 32 : 0)
   let lastHp = NaN
   const view: EnemyView = {
     get x() {
@@ -150,6 +159,12 @@ export function createEnemyLayer(scene: Phaser.Scene) {
         .setScale(it.view.scale)
         .setDepth(it.view.y + 2000)
       s.play('explode')
+      const fx = fxOf(scene)
+      fx.flash(it.view.x, it.view.y - 14, 0xffa040, 1.8 * it.view.scale)
+      fx.ring(it.view.x, it.view.y, 1.1 * it.view.scale, 0xffc070)
+      fx.smoke(it.view.x, it.view.y - 18, 1.6 * it.view.scale)
+      fx.smoke(it.view.x + 8, it.view.y - 10, 1.2 * it.view.scale)
+      fx.scorch(it.view.x, it.view.y, 0.7 * it.view.scale)
       s.once('animationcomplete', () => {
         s.setVisible(false)
         pool.push(s)
