@@ -5,6 +5,8 @@ export interface CameraControlsOptions {
   worldBounds: Bounds
   minZoom: number
   maxZoom: number
+  /** false — клавиши WASD/стрелки игнорируются (например, S занята продажей башни) */
+  keysEnabled?: () => boolean
 }
 
 export interface CameraControls {
@@ -45,7 +47,8 @@ export function attachCameraControls(
 
   const keys = scene.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT', false) as
     Record<string, Phaser.Input.Keyboard.Key> | undefined
-  const down = (...names: string[]) => names.some((n) => keys?.[n]?.isDown)
+  const down = (...names: string[]) =>
+    (opts.keysEnabled?.() ?? true) && names.some((n) => keys?.[n]?.isDown)
 
   const touching = () => input.pointer1.isDown && input.pointer2.isDown
 

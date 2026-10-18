@@ -21,3 +21,4 @@ export {
   type TowerLevel,
   type TowerStats,
 } from './model/tower'
+export { createTowerLayer, createTowerView, type TowerView } from './view/towerView'

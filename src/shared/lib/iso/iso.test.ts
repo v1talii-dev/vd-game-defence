@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   cellDiamond,
   cellToScreen,
+  pickTile,
+  radiusToScreen,
   screenToCell,
   screenToTile,
+  tileCenterToScreen,
   tiledObjectToCell,
   worldSize,
 } from '.'
@@ -16,7 +19,8 @@ describe('iso', () => {
   it('клетка (0,0): верхний угол ромба касается верха мира', () => {
     const d = cellDiamond({ x: 0, y: 0 })
     expect(d[0]).toEqual({ x: 768, y: 0 })
-    expect(cellToScreen({ x: 0, y: 0 })).toEqual({ x: 768, y: 16 })
+    expect(tileCenterToScreen({ x: 0, y: 0 })).toEqual({ x: 768, y: 16 })
+    expect(cellToScreen({ x: 0, y: 0 })).toEqual({ x: 768, y: 0 })
   })
 
   it('углы карты лежат на границах мира', () => {
@@ -39,15 +43,29 @@ describe('iso', () => {
 
   it('screenToTile: точки внутри ромба относятся к своей клетке', () => {
     const t = { x: 5, y: 9 }
-    const c = cellToScreen(t)
+    const c = tileCenterToScreen(t)
     expect(screenToTile(c)).toEqual(t)
     expect(screenToTile({ x: c.x, y: c.y - 15 })).toEqual(t)
     expect(screenToTile({ x: c.x + 30, y: c.y })).toEqual(t)
     expect(screenToTile({ x: c.x, y: c.y + 17 })).toEqual({ x: 6, y: 10 })
   })
 
-  it('объекты Tiled: центр клетки (i, j) = ((i + 0.5) * th, (j + 0.5) * th)', () => {
-    expect(tiledObjectToCell({ x: 16, y: 16 })).toEqual({ x: 0, y: 0 })
-    expect(tiledObjectToCell({ x: 3.5 * 32, y: 7.5 * 32 })).toEqual({ x: 3, y: 7 })
+  it('объекты Tiled: координата = px / tileheight, центр клетки (i, j) = (i + 0.5, j + 0.5)', () => {
+    expect(tiledObjectToCell({ x: 16, y: 16 })).toEqual({ x: 0.5, y: 0.5 })
+    expect(tiledObjectToCell({ x: 3.5 * 32, y: 7.5 * 32 })).toEqual({ x: 3.5, y: 7.5 })
+  })
+
+  it('pickTile: вне карты null', () => {
+    expect(pickTile(tileCenterToScreen({ x: 4, y: 5 }))).toEqual({ x: 4, y: 5 })
+    expect(pickTile({ x: 0, y: 0 })).toBeNull()
+    expect(pickTile(tileCenterToScreen({ x: 24, y: 3 }))).toBeNull()
+  })
+})
+
+describe('radiusToScreen', () => {
+  it('радиус 1 клетка: полуоси эллипса в sqrt2 раз больше половины тайла', () => {
+    const { rx, ry } = radiusToScreen(1)
+    expect(rx).toBeCloseTo(32 * Math.SQRT2)
+    expect(ry).toBeCloseTo(16 * Math.SQRT2)
   })
 })

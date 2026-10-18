@@ -5,7 +5,14 @@ import type { LevelData } from '@/entities/level'
 import type { TowerState, TowerType } from '@/entities/tower'
 import { createBattle } from '../model/battle'
 import { recordCommands, type Replay } from '../model/replay'
-import type { Battle, BattleOptions, BattleOutcome, Command, RejectReason } from '../model/types'
+import type {
+  Battle,
+  BattleOptions,
+  BattleOutcome,
+  Cell,
+  Command,
+  RejectReason,
+} from '../model/types'
 
 const TICK_MS = 1000 / TICK_RATE
 // не больше стольких тиков за кадр, чтобы фризы вкладки не превращались в «догоняние»
@@ -33,6 +40,8 @@ export const useBattleSession = defineStore('battleSession', () => {
   const selectedTowerId = ref<number | null>(null)
   // копия выбранной башни для панели; обновляется по событиям
   const selectedTower = ref<TowerState | null>(null)
+  // выбранная на тач-экране клетка под постройку, ждёт подтверждения
+  const pendingCell = ref<Cell | null>(null)
   const lastRejected = ref<{ reason: RejectReason; at: number } | null>(null)
 
   function syncSelected() {
@@ -63,6 +72,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTowerId.value = null
     selectedTower.value = null
     lastRejected.value = null
+    pendingCell.value = null
     syncWave()
 
     b.on('moneyChanged', (e) => (money.value = e.money))
@@ -118,6 +128,13 @@ export const useBattleSession = defineStore('battleSession', () => {
     if (type) select(null)
   }
 
+  function confirmBuild() {
+    if (buildType.value && pendingCell.value) {
+      dispatch({ type: 'placeTower', towerType: buildType.value, cell: pendingCell.value })
+    }
+    pendingCell.value = null
+  }
+
   function exportReplay(): Replay | null {
     return recorder?.replay() ?? null
   }
@@ -143,6 +160,8 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTowerId,
     selectedTower,
     lastRejected,
+    pendingCell,
+    confirmBuild,
     start,
     step,
     advance,
