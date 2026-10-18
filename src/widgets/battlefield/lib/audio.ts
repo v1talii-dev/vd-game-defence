@@ -1,5 +1,4 @@
 import type Phaser from 'phaser'
-import { watch } from 'vue'
 import type { Battle } from '@/entities/battle'
 import { useProgressStore } from '@/entities/progress'
 import type { TowerType } from '@/entities/tower'
@@ -34,33 +33,18 @@ const FIRE_SFX: Record<TowerType, Sfx> = {
 }
 const MAX_PER_KEY = 3
 const SFX_GAIN = 0.8
-const MUSIC_GAIN = 0.3
 
 export function preloadAudio(
   scene: Phaser.Scene,
   base = `${import.meta.env.BASE_URL}assets/audio/`,
 ) {
   for (const k of SFX) scene.load.audio(`sfx-${k}`, `${base}sfx/${k}.ogg`)
-  scene.load.audio('music-battle', `${base}music/battle.mp3`)
 }
 
-/** Звук боя: громкость и вкл/выкл берутся из настроек и реагируют на их изменение */
+/** Звук боя (только эффекты, без музыки): громкость и вкл/выкл берутся из настроек */
 export function createBattleAudio(scene: Phaser.Scene) {
   const progress = useProgressStore()
   const active = new Map<string, number>()
-  const music = scene.cache.audio.exists('music-battle')
-    ? scene.sound.add('music-battle', { loop: true })
-    : null
-
-  const applyMusic = () => {
-    const s = progress.settings
-    if (!music) return
-    ;(music as Phaser.Sound.WebAudioSound).setVolume(s.volume * MUSIC_GAIN)
-    if (s.music && s.volume > 0) {
-      if (!music.isPlaying) music.play()
-    } else if (music.isPlaying) music.stop()
-  }
-  const stopWatch = watch(() => ({ ...progress.settings }), applyMusic, { immediate: true })
 
   function play(key: Sfx) {
     const s = progress.settings
@@ -110,12 +94,5 @@ export function createBattleAudio(scene: Phaser.Scene) {
     return () => offs.forEach((off) => off())
   }
 
-  return {
-    bind,
-    destroy() {
-      stopWatch()
-      music?.stop()
-      music?.destroy()
-    },
-  }
+  return { bind, destroy() {} }
 }

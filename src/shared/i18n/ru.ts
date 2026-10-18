@@ -11,7 +11,6 @@ export const ru = {
   settings: {
     title: 'Настройки',
     volume: 'Громкость',
-    music: 'Музыка',
     sfx: 'Звуки',
     showRanges: 'Показывать радиусы',
     back: 'Назад',

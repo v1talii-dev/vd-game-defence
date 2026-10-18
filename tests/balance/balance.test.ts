@@ -36,5 +36,6 @@ describe('баланс (SPEC §6.4)', () => {
     }
     expect(wins / 50).toBeGreaterThanOrEqual(0.2)
     expect(wins / 50).toBeLessThanOrEqual(0.8)
-  })
+    // в одиночку ~3 с, но в параллельном прогоне под нагрузкой упирается в дефолтные 5 с
+  }, 20_000)
 })

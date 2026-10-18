@@ -8,7 +8,6 @@ export interface LevelResult {
 
 export interface Settings {
   volume: number
-  music: boolean
   sfx: boolean
   showRanges: boolean
 }
@@ -35,7 +34,7 @@ export function defaultSave(): SaveData {
   return {
     version: SAVE_VERSION,
     levels: {},
-    settings: { volume: 0.7, music: true, sfx: true, showRanges: false },
+    settings: { volume: 0.7, sfx: true, showRanges: false },
     tutorialDone: false,
   }
 }
@@ -73,7 +72,7 @@ export function parseSave(raw: string): SaveData {
   if (isObj(json.settings)) {
     const s = json.settings
     def.settings.volume = num(s.volume, 0, 1) ?? def.settings.volume
-    for (const k of ['music', 'sfx', 'showRanges'] as const) {
+    for (const k of ['sfx', 'showRanges'] as const) {
       if (typeof s[k] === 'boolean') def.settings[k] = s[k]
     }
   }

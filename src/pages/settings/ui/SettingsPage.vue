@@ -24,14 +24,6 @@ const progress = useProgressStore()
         />
       </label>
       <label class="row">
-        <span>{{ t.settings.music }}</span>
-        <input
-          type="checkbox"
-          :checked="progress.settings.music"
-          @change="progress.updateSettings({ music: ($event.target as HTMLInputElement).checked })"
-        />
-      </label>
-      <label class="row">
         <span>{{ t.settings.sfx }}</span>
         <input
           type="checkbox"

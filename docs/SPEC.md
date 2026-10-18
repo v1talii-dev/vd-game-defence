@@ -117,7 +117,7 @@ src/
 ### 3.3 Состояние и сохранения
 
 - Состояние боя живёт только в симуляции. Pinia хранит производные для UI и сессионные настройки.
-- `entities/progress` хранит в `localStorage` ключ `vdgd:save:v1`: `{ version, levels: { [id]: { stars, bestHp } }, settings: { volume, music, sfx, showRanges } }`. Если версия неизвестна или JSON битый, берём дефолт и пишем предупреждение в лог. Игра не должна падать.
+- `entities/progress` хранит в `localStorage` ключ `vdgd:save:v1`: `{ version, levels: { [id]: { stars, bestHp } }, settings: { volume, sfx, showRanges } }`. Если версия неизвестна или JSON битый, берём дефолт и пишем предупреждение в лог. Игра не должна падать.
 - Пауза включается автоматически на `visibilitychange` и `blur`.
 
 ### 3.4 Ошибки

@@ -11,6 +11,7 @@ export interface GameApi {
     tick: number
     money: number
     towers: { id: number; type: string; level: number; invested: number; cell: Cell }[]
+    enemies: unknown[]
     outcome: { result: 'victory'; stars: number } | { result: 'defeat' } | null
     wave: { phase: 'prep' | 'active'; number: number; total: number }
   } | null
@@ -42,7 +43,7 @@ export async function openBattle(page: Page, query = ''): Promise<void> {
         JSON.stringify({
           version: 1,
           levels: {},
-          settings: { volume: 0.7, music: true, sfx: true, showRanges: false },
+          settings: { volume: 0.7, sfx: true, showRanges: false },
           tutorialDone: true,
         }),
       )

@@ -25,13 +25,6 @@
 | victory.ogg | jingles_STEEL16.ogg | Music Jingles | Kenney | https://kenney.nl/assets/music-jingles |
 | defeat.ogg | jingles_SAX04.ogg | Music Jingles | Kenney | https://kenney.nl/assets/music-jingles |
 
-## Музыка — `audio/music/`
-
-| Файл | Название | Автор | Источник |
-|---|---|---|---|
-| menu.ogg | Some militaristic tune (march2) | Spring Spring | https://opengameart.org/content/some-militaristic-tune |
-| battle.mp3 | Heavy battle music (battle1) | Davieplier | https://opengameart.org/content/heavy-battle-music |
-
 ## Карты — `maps/`
 
 `desert-base.tmj` — собственная разработка проекта.
