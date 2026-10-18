@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useBattleSession } from '@/entities/battle'
 import { t } from '@/shared/i18n'
-import { UiButton } from '@/shared/ui'
+import { UiButton, UiPanel } from '@/shared/ui'
 import { crashInfo } from '../model/crash'
 
 const session = useBattleSession()
@@ -27,13 +27,13 @@ async function copy() {
 
 <template>
   <div v-if="crashInfo" class="overlay" role="alertdialog" data-testid="crash-screen">
-    <div class="box">
+    <UiPanel class="box">
       <h2>{{ t.crash.title }}</h2>
       <p>{{ t.crash.message }}</p>
       <UiButton data-testid="crash-copy" @click="copy">
         {{ copied ? t.crash.copied : t.crash.copy }}
       </UiButton>
-    </div>
+    </UiPanel>
   </div>
 </template>
 
@@ -44,17 +44,18 @@ async function copy() {
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 80%);
+  background: radial-gradient(ellipse at center, rgb(40 8 4 / 70%), rgb(0 0 0 / 90%));
+  animation: ui-fade-in 0.3s var(--ease);
 }
 .box {
-  max-width: min(440px, 90vw);
-  padding: 24px;
-  background: var(--c-bg);
-  border: 2px solid var(--c-accent);
-  border-radius: 6px;
+  max-width: min(460px, 90vw);
 }
 h2 {
   margin: 0 0 8px;
-  color: var(--c-sand);
+  color: var(--c-danger);
+  text-transform: uppercase;
+}
+p {
+  color: var(--c-muted);
 }
 </style>

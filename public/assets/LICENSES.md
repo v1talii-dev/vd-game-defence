@@ -32,6 +32,17 @@
 | menu.ogg | Some militaristic tune (march2) | Spring Spring | https://opengameart.org/content/some-militaristic-tune |
 | battle.mp3 | Heavy battle music (battle1) | Davieplier | https://opengameart.org/content/heavy-battle-music |
 
+## Шрифты интерфейса — `fonts/` (SIL Open Font License 1.1)
+
+| Файлы | Гарнитура | Автор | Источник |
+|---|---|---|---|
+| russo-one-*.woff2 | Russo One (кириллица, латиница) | Jovanny Lemonad | https://fonts.google.com/specimen/Russo+One (пакет @fontsource/russo-one) |
+| play-*.woff2 | Play 400/700 (кириллица, латиница) | Jonas Hecksher | https://fonts.google.com/specimen/Play (пакет @fontsource/play) |
+
+## Иконки интерфейса
+
+Инлайн-SVG в `src/shared/ui/UiIcon.vue` нарисованы для проекта (CC0), внешние иконки не подключены.
+
 ## Карты — `maps/`
 
 `desert-base.tmj` — собственная разработка проекта.

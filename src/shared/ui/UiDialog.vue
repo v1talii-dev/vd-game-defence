@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiButton from './UiButton.vue'
+import UiPanel from './UiPanel.vue'
 
 defineProps<{ title: string; message?: string; confirmLabel: string; cancelLabel: string }>()
 defineEmits<{ confirm: []; cancel: [] }>()
@@ -7,7 +8,7 @@ defineEmits<{ confirm: []; cancel: [] }>()
 
 <template>
   <div class="overlay" @click.self="$emit('cancel')" @keydown.esc="$emit('cancel')">
-    <div class="dialog" role="dialog" aria-modal="true" :aria-label="title">
+    <UiPanel class="dialog" role="dialog" aria-modal="true" :aria-label="title">
       <h2>{{ title }}</h2>
       <p v-if="message">{{ message }}</p>
       <slot />
@@ -15,7 +16,7 @@ defineEmits<{ confirm: []; cancel: [] }>()
         <UiButton variant="secondary" @click="$emit('cancel')">{{ cancelLabel }}</UiButton>
         <UiButton @click="$emit('confirm')">{{ confirmLabel }}</UiButton>
       </div>
-    </div>
+    </UiPanel>
   </div>
 </template>
 
@@ -26,25 +27,26 @@ defineEmits<{ confirm: []; cancel: [] }>()
   z-index: 100;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 65%);
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  background: radial-gradient(ellipse at center, rgb(0 0 0 / 55%), rgb(0 0 0 / 82%));
+  animation: ui-fade-in 0.2s var(--ease);
 }
 .dialog {
-  background: var(--c-bg);
-  border: 2px solid var(--c-accent);
-  border-radius: 6px;
-  padding: 20px;
-  max-width: min(420px, 90vw);
+  max-width: min(440px, 90vw);
+  animation: ui-pop-in 0.25s var(--ease);
 }
 h2 {
   margin: 0 0 8px;
-  color: var(--c-sand);
+  color: var(--c-accent);
+  text-transform: uppercase;
+}
+p {
+  margin: 0;
+  color: var(--c-muted);
 }
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 </style>

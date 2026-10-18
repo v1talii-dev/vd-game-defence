@@ -49,9 +49,7 @@ const progress = useProgressStore()
           "
         />
       </label>
-      <RouterLink v-slot="{ navigate }" to="/" custom>
-        <UiButton variant="secondary" @click="navigate">{{ t.settings.back }}</UiButton>
-      </RouterLink>
+      <UiButton to="/" variant="secondary" class="back">{{ t.settings.back }}</UiButton>
     </UiPanel>
   </main>
 </template>
@@ -64,23 +62,70 @@ const progress = useProgressStore()
   overflow-y: auto;
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   box-sizing: border-box;
+  background:
+    radial-gradient(ellipse at center, transparent 35%, rgb(0 0 0 / 80%) 100%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgb(184 154 82 / 6%) 47px 48px),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgb(184 154 82 / 6%) 47px 48px),
+    linear-gradient(180deg, #151a11, var(--c-bg));
 }
 .panel {
-  width: min(420px, 90vw);
+  width: min(440px, 90vw);
+  animation: ui-pop-in 0.3s var(--ease);
 }
 h1 {
   margin: 0 0 12px;
-  color: var(--c-sand);
+  color: var(--c-accent);
+  text-transform: uppercase;
 }
 .row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 44px;
+  min-height: 48px;
+  border-bottom: 1px solid rgb(184 154 82 / 18%);
+  cursor: pointer;
 }
-.row input {
-  min-width: 24px;
-  min-height: 24px;
+.row input[type='checkbox'] {
+  appearance: none;
+  position: relative;
+  width: 48px;
+  height: 24px;
+  margin: 0;
+  background: var(--c-steel-900);
+  box-shadow: inset 0 0 0 1px var(--c-brass);
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.row input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--c-muted);
+  transition:
+    transform 0.15s var(--ease),
+    background 0.15s var(--ease);
+}
+.row input[type='checkbox']:checked {
+  background: var(--c-olive);
+}
+.row input[type='checkbox']:checked::after {
+  transform: translateX(24px);
+  background: var(--c-accent);
+}
+.row input[type='range'] {
+  width: 180px;
   accent-color: var(--c-accent);
+  cursor: pointer;
+}
+input:focus-visible {
+  outline: 2px solid var(--c-text);
+  outline-offset: 2px;
+}
+.back {
+  margin-top: 20px;
+  width: 100%;
 }
 </style>

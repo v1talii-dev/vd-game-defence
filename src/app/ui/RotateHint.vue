@@ -22,7 +22,8 @@ import { t } from '@/shared/i18n'
     text-align: center;
     font-size: 1.4rem;
     background: var(--c-bg);
-    color: var(--c-sand);
+    color: var(--c-accent);
+    font-family: var(--font-display);
   }
 }
 </style>
