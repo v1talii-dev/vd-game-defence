@@ -15,9 +15,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+      # shortcut: skips deploy until M0 adds package.json, remove this job after that
+      - id: check
+        run: echo "ready=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   build:
-    # shortcut: skipped until M0 adds package.json, remove the condition after that
-    if: hashFiles('package.json') != ''
+    needs: detect
+    if: needs.detect.outputs.ready == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
