@@ -25,6 +25,17 @@
 | victory.ogg | jingles_STEEL16.ogg | Music Jingles | Kenney | https://kenney.nl/assets/music-jingles |
 | defeat.ogg | jingles_SAX04.ogg | Music Jingles | Kenney | https://kenney.nl/assets/music-jingles |
 
+## Шрифты интерфейса — `fonts/` (SIL Open Font License 1.1)
+
+| Файлы | Гарнитура | Автор | Источник |
+|---|---|---|---|
+| russo-one-*.woff2 | Russo One (кириллица, латиница) | Jovanny Lemonad | https://fonts.google.com/specimen/Russo+One (пакет @fontsource/russo-one) |
+| play-*.woff2 | Play 400/700 (кириллица, латиница) | Jonas Hecksher | https://fonts.google.com/specimen/Play (пакет @fontsource/play) |
+
+## Иконки интерфейса
+
+Инлайн-SVG в `src/shared/ui/UiIcon.vue` нарисованы для проекта (CC0), внешние иконки не подключены.
+
 ## Карты — `maps/`
 
 `desert-base.tmj` — собственная разработка проекта.

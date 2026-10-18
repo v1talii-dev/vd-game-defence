@@ -56,7 +56,7 @@ watch(
 <style scoped>
 .hint {
   position: absolute;
-  top: calc(var(--safe-top) + 64px);
+  top: calc(var(--safe-top) + 78px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -64,9 +64,10 @@ watch(
   gap: 12px;
   max-width: 60vw;
   padding: 8px 12px;
-  background: rgb(28 26 20 / 92%);
-  border: 1px solid var(--c-accent);
-  border-radius: 6px;
+  background: rgb(15 18 13 / 94%);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  animation: ui-pop-in 0.25s var(--ease);
   pointer-events: auto;
 }
 </style>
