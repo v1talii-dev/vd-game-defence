@@ -7,6 +7,8 @@ export interface EnemyState {
   // позиция в клетках (float)
   x: number
   y: number
+  // высота над землёй, в клетках
+  z: number
   // пройдено по пути, в клетках
   distance: number
   hp: number
@@ -55,6 +57,7 @@ export function createEnemy(
     id,
     type,
     ...pointAt(geom, distance),
+    z: cfg.flightHeight,
     distance,
     hp: cfg.hp,
     maxHp: cfg.hp,

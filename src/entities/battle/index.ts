@@ -16,7 +16,6 @@ export type {
 export {
   DAMAGE_MATRIX,
   HQ_HP,
-  MORTAR_SCATTER,
   PREP_SECONDS,
   STAR_THRESHOLDS,
   START_MONEY,

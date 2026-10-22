@@ -10,7 +10,7 @@
         "type": "placeTower",
         "towerType": "machineGun",
         "cell": {
-          "x": 6,
+          "x": 9,
           "y": 5
         }
       }
@@ -19,18 +19,7 @@
       "tick": 2,
       "cmd": {
         "type": "placeTower",
-        "towerType": "machineGun",
-        "cell": {
-          "x": 9,
-          "y": 5
-        }
-      }
-    },
-    {
-      "tick": 3,
-      "cmd": {
-        "type": "placeTower",
-        "towerType": "mortar",
+        "towerType": "rocket",
         "cell": {
           "x": 12,
           "y": 8
@@ -38,7 +27,7 @@
       }
     },
     {
-      "tick": 716,
+      "tick": 3,
       "cmd": {
         "type": "placeTower",
         "towerType": "rocket",
@@ -49,7 +38,7 @@
       }
     },
     {
-      "tick": 1866,
+      "tick": 4,
       "cmd": {
         "type": "placeTower",
         "towerType": "machineGun",
@@ -60,10 +49,10 @@
       }
     },
     {
-      "tick": 3905,
+      "tick": 795,
       "cmd": {
         "type": "placeTower",
-        "towerType": "antiAir",
+        "towerType": "machineGun",
         "cell": {
           "x": 15,
           "y": 5
@@ -71,7 +60,7 @@
       }
     },
     {
-      "tick": 6460,
+      "tick": 2025,
       "cmd": {
         "type": "placeTower",
         "towerType": "rocket",
@@ -82,10 +71,10 @@
       }
     },
     {
-      "tick": 8188,
+      "tick": 3137,
       "cmd": {
         "type": "placeTower",
-        "towerType": "mortar",
+        "towerType": "rocket",
         "cell": {
           "x": 12,
           "y": 9
@@ -93,17 +82,17 @@
       }
     },
     {
-      "tick": 9165,
+      "tick": 4371,
       "cmd": {
         "type": "upgradeTower",
-        "towerId": 3
+        "towerId": 2
       }
     },
     {
-      "tick": 10396,
+      "tick": 6358,
       "cmd": {
         "type": "placeTower",
-        "towerType": "antiAir",
+        "towerType": "machineGun",
         "cell": {
           "x": 17,
           "y": 13
@@ -111,7 +100,7 @@
       }
     },
     {
-      "tick": 11964,
+      "tick": 7397,
       "cmd": {
         "type": "placeTower",
         "towerType": "rocket",
@@ -122,35 +111,35 @@
       }
     },
     {
-      "tick": 12413,
+      "tick": 8205,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 3
+      }
+    },
+    {
+      "tick": 9349,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 218
+      }
+    },
+    {
+      "tick": 9573,
       "cmd": {
         "type": "upgradeTower",
         "towerId": 50
       }
     },
     {
-      "tick": 13436,
+      "tick": 9765,
       "cmd": {
         "type": "upgradeTower",
-        "towerId": 685
+        "towerId": 398
       }
     },
     {
-      "tick": 13603,
-      "cmd": {
-        "type": "upgradeTower",
-        "towerId": 465
-      }
-    },
-    {
-      "tick": 13972,
-      "cmd": {
-        "type": "upgradeTower",
-        "towerId": 969
-      }
-    },
-    {
-      "tick": 14949,
+      "tick": 10798,
       "cmd": {
         "type": "placeTower",
         "towerType": "rocket",
@@ -161,24 +150,84 @@
       }
     },
     {
-      "tick": 15367,
+      "tick": 12192,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 2
+      }
+    },
+    {
+      "tick": 12496,
       "cmd": {
         "type": "upgradeTower",
         "towerId": 3
       }
     },
     {
-      "tick": 16467,
+      "tick": 13543,
       "cmd": {
         "type": "upgradeTower",
-        "towerId": 50
+        "towerId": 218
       }
     },
     {
-      "tick": 17539,
+      "tick": 13853,
       "cmd": {
         "type": "upgradeTower",
-        "towerId": 685
+        "towerId": 772
+      }
+    },
+    {
+      "tick": 14090,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 1476
+      }
+    },
+    {
+      "tick": 14250,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 621
+      }
+    },
+    {
+      "tick": 15232,
+      "cmd": {
+        "type": "placeTower",
+        "towerType": "rocket",
+        "cell": {
+          "x": 8,
+          "y": 17
+        }
+      }
+    },
+    {
+      "tick": 15462,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 2420
+      }
+    },
+    {
+      "tick": 15749,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 2420
+      }
+    },
+    {
+      "tick": 16817,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 772
+      }
+    },
+    {
+      "tick": 17569,
+      "cmd": {
+        "type": "upgradeTower",
+        "towerId": 1476
       }
     }
   ]

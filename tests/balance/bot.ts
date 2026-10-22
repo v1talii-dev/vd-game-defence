@@ -36,7 +36,8 @@ export function runBot(
         const tower = s.towers.find((t) => t.cell.x === x && t.cell.y === y)
         const cost = tower && upgradeCost(tower.type, tower.level)
         if (!tower || cost === null) next++
-        else if (s.money >= cost!) {
+        // строящаяся/улучшаемая башня не принимает улучшение — бот ждёт её готовности
+        else if (tower.phase === 'active' && s.money >= cost!) {
           battle.dispatch({ type: 'upgradeTower', towerId: tower.id })
           pending = true
           next++
@@ -48,19 +49,18 @@ export function runBot(
   return battle
 }
 
-// эталонная расстановка: пулемёты на входе, миномёт на центральной высоте,
-// ракеты и ПВО по внешней стороне петли, затем апгрейды
+// эталонная расстановка: пулемёты на входе, ракета на центральной высоте,
+// ракеты и пулемёты по внешней стороне петли, затем апгрейды
 export const REFERENCE: readonly BotAction[] = [
-  { place: 'machineGun', at: [6, 5] },
   { place: 'machineGun', at: [9, 5] },
-  { place: 'mortar', at: [12, 8] },
+  { place: 'rocket', at: [12, 8] },
   { place: 'rocket', at: [17, 7] },
   { place: 'machineGun', at: [12, 5] },
-  { place: 'antiAir', at: [15, 5] },
+  { place: 'machineGun', at: [15, 5] },
   { place: 'rocket', at: [17, 10] },
-  { place: 'mortar', at: [12, 9] },
+  { place: 'rocket', at: [12, 9] },
   { upgrade: [12, 8] },
-  { place: 'antiAir', at: [17, 13] },
+  { place: 'machineGun', at: [17, 13] },
   { place: 'rocket', at: [14, 12] },
   { upgrade: [17, 7] },
   { upgrade: [17, 10] },
@@ -109,7 +109,7 @@ export function runRandomBot(level: LevelData, seed: number): Battle {
       if (s.towers.length > 0 && roll(2) === 0) {
         const tower = s.towers[roll(s.towers.length)]!
         const cost = upgradeCost(tower.type, tower.level)
-        if (cost !== null && s.money >= cost) {
+        if (cost !== null && tower.phase === 'active' && s.money >= cost) {
           battle.dispatch({ type: 'upgradeTower', towerId: tower.id })
           pending = true
         }

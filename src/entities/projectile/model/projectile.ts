@@ -1,38 +1,101 @@
 import { TICK_RATE } from '@/shared/config'
+import { dist3, lerp, type Vec3 } from '@/shared/lib/sim'
+
+export type ProjectileKind = 'bullet' | 'rocket'
 
 export interface ProjectileState {
   id: number
   towerId: number
   targetId: number
-  // текущая позиция и точка назначения, в клетках
+  kind: ProjectileKind
+  // текущая позиция, в клетках (z — высота)
   x: number
   y: number
+  z: number
+  // точка вылета (дуло)
+  fromX: number
+  fromY: number
+  fromZ: number
+  // точка попадания: обновляется за живой целью, после гибели остаётся последней известной
   tx: number
   ty: number
+  tz: number
+  // прогресс полёта 0..1
+  t: number
+  // прирост t за тик (speed / TICK_RATE / дистанция при выстреле)
+  dt: number
+  // высота дуги над прямой, в клетках
+  arc: number
   // клеток в секунду
   speed: number
   // урон с учётом ранга, без модификатора брони
   damage: number
   // ключ DamageType башни (тип хранит entities/tower)
   damageType: string
-  // радиус сплэша, 0 — бьёт только цель
-  splash: number
-  // самонаводящийся снаряд каждый тик обновляет tx/ty по цели, фугас летит в точку
-  homing: boolean
 }
 
-// сдвигает снаряд на один тик; true — долетел до точки назначения
-export function advanceProjectile(p: ProjectileState): boolean {
-  const step = p.speed / TICK_RATE
-  const dx = p.tx - p.x
-  const dy = p.ty - p.y
-  const d = Math.hypot(dx, dy)
-  if (d <= step) {
-    p.x = p.tx
-    p.y = p.ty
-    return true
+export interface ProjectileLaunch {
+  id: number
+  towerId: number
+  targetId: number
+  kind: ProjectileKind
+  from: Vec3
+  aim: Vec3
+  speed: number
+  arcFactor: number
+  minArc: number
+  damage: number
+  damageType: string
+}
+
+export function createProjectile(l: ProjectileLaunch): ProjectileState {
+  const d = dist3(l.from, l.aim)
+  return {
+    id: l.id,
+    towerId: l.towerId,
+    targetId: l.targetId,
+    kind: l.kind,
+    x: l.from.x,
+    y: l.from.y,
+    z: l.from.z,
+    fromX: l.from.x,
+    fromY: l.from.y,
+    fromZ: l.from.z,
+    tx: l.aim.x,
+    ty: l.aim.y,
+    tz: l.aim.z,
+    t: 0,
+    dt: d > 0 ? l.speed / TICK_RATE / d : 1,
+    arc: Math.max(l.minArc, l.arcFactor * d),
+    speed: l.speed,
+    damage: l.damage,
+    damageType: l.damageType,
   }
-  p.x += (dx / d) * step
-  p.y += (dy / d) * step
-  return false
+}
+
+// bullet — линейно, rocket — разгон t²
+function ease(kind: ProjectileKind, t: number): number {
+  return kind === 'rocket' ? t * t : t
+}
+
+// позиция снаряда по прогрессу t (SPEC §4.7)
+export function projectilePosition(p: ProjectileState, t: number): Vec3 {
+  const e = ease(p.kind, t)
+  return {
+    x: lerp(p.fromX, p.tx, e),
+    y: lerp(p.fromY, p.ty, e),
+    z: Math.max(0, lerp(p.fromZ, p.tz, e) + p.arc * 4 * t * (1 - t)),
+  }
+}
+
+// сдвигает снаряд на один тик; aim — новая точка попадания живой цели; true — долетел
+export function advanceProjectile(p: ProjectileState, aim?: Vec3): boolean {
+  if (aim) {
+    p.tx = aim.x
+    p.ty = aim.y
+    p.tz = aim.z
+  }
+  p.t = Math.min(1, p.t + p.dt)
+  Object.assign(p, projectilePosition(p, p.t))
+  return p.t >= 1
 }

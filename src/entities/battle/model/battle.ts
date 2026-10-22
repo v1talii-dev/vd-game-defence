@@ -3,12 +3,11 @@ import {
   advanceEnemy,
   createEnemy,
   createPathGeometry,
-  pointAt,
   type ArmorType,
   type EnemyState,
   type EnemyType,
 } from '@/entities/enemy/@x/battle'
-import { advanceProjectile, type ProjectileState } from '@/entities/projectile/@x/battle'
+import { advanceProjectile, createProjectile, type ProjectileState } from '@/entities/projectile/@x/battle'
 import {
   TOWERS,
   rankForXp,
@@ -16,17 +15,18 @@ import {
   sellRefund,
   towerStats,
   upgradeCost,
+  buildTicks,
+  upgradeTicks,
   type DamageType,
   type TargetPriority,
   type TowerState,
 } from '@/entities/tower/@x/battle'
 import { WAVE_COUNT, waveSchedule } from '@/entities/wave/@x/battle'
 import { TICK_RATE } from '@/shared/config'
-import { createEmitter, nextRandom, seedRng } from '@/shared/lib/sim'
+import { createEmitter, seedRng } from '@/shared/lib/sim'
 import {
   DAMAGE_MATRIX,
   HQ_HP,
-  MORTAR_SCATTER,
   PREP_SECONDS,
   STAR_THRESHOLDS,
   START_MONEY,
@@ -83,12 +83,6 @@ export function createBattle(opts: BattleOptions): Battle {
     outcome: null,
   }
 
-  const random = () => {
-    const [v, next] = nextRandom(state.rng)
-    state.rng = next
-    return v
-  }
-
   function addMoney(delta: number) {
     if (delta === 0) return
     state.money += delta
@@ -103,6 +97,58 @@ export function createBattle(opts: BattleOptions): Battle {
     return state.towers.find((t) => t.id === id)
   }
 
+  function endPhase(tower: TowerState) {
+    tower.phase = 'active'
+    tower.phaseTicksTotal = tower.phaseTicksLeft = tower.phasePaid = 0
+    tower.progress = 1
+  }
+
+  function cancelBuild(cmd: Command, towerId: number) {
+    const tower = findTower(towerId)
+    if (!tower) return reject(cmd, 'towerNotFound')
+    if (tower.phase !== 'queued' && tower.phase !== 'building') return reject(cmd, 'notBuilding')
+    const refund = tower.phasePaid
+    state.towers = state.towers.filter((t) => t !== tower)
+    emit({ type: 'towerBuildCancelled', towerId, refund })
+    addMoney(refund)
+    // освободившиеся деньги могут оплатить следующий заказ
+    payQueue()
+  }
+
+  // оплата заказов строго по порядку: пока первый не оплачен, следующие ждут
+  function payQueue() {
+    for (const tower of state.towers) {
+      if (tower.phase !== 'queued') continue
+      const cost = TOWERS[tower.type].levels[0].cost
+      if (state.money < cost) return
+      const ticks = buildTicks(tower.type)
+      tower.phase = 'building'
+      tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
+      tower.progress = 0
+      tower.phasePaid = tower.invested = cost
+      emit({ type: 'towerBuildStarted', towerId: tower.id, cost, ticks })
+      addMoney(-cost)
+    }
+  }
+
+  // завершение ровно через phaseTicksTotal тиков после старта
+  function advanceConstruction() {
+    for (const tower of state.towers) {
+      if (tower.phase !== 'building' && tower.phase !== 'upgrading') continue
+      tower.phaseTicksLeft--
+      tower.progress = 1 - tower.phaseTicksLeft / tower.phaseTicksTotal
+      if (tower.phaseTicksLeft > 0) continue
+      const wasBuilding = tower.phase === 'building'
+      const cost = tower.phasePaid
+      endPhase(tower)
+      if (wasBuilding) emit({ type: 'towerBuilt', towerId: tower.id })
+      else {
+        tower.level++
+        emit({ type: 'towerUpgraded', towerId: tower.id, level: tower.level, cost })
+      }
+    }
+  }
+
   function apply(cmd: Command) {
     switch (cmd.type) {
       case 'placeTower': {
@@ -112,7 +158,8 @@ export function createBattle(opts: BattleOptions): Battle {
         if (state.towers.some((t) => t.cell.x === x && t.cell.y === y))
           return reject(cmd, 'cellOccupied')
         const cost = TOWERS[cmd.towerType].levels[0].cost
-        if (state.money < cost) return reject(cmd, 'notEnoughMoney')
+        // нехватка денег не отказ: заказ встаёт в очередь (FIFO), клетка занята
+        const waiting = state.money < cost || state.towers.some((t) => t.phase === 'queued')
         const tower: TowerState = {
           id: state.nextId++,
           type: cmd.towerType,
@@ -122,10 +169,15 @@ export function createBattle(opts: BattleOptions): Battle {
           level: 1,
           xp: 0,
           rank: 0,
-          invested: cost,
+          invested: 0,
           cooldown: 0,
           priority: 'first',
           targetId: null,
+          phase: 'queued',
+          phaseTicksTotal: 0,
+          phaseTicksLeft: 0,
+          progress: 0,
+          phasePaid: 0,
         }
         state.towers.push(tower)
         emit({
@@ -135,22 +187,56 @@ export function createBattle(opts: BattleOptions): Battle {
           cell: { ...tower.cell },
           cost,
         })
-        return addMoney(-cost)
+        emit({
+          type: 'towerOrdered',
+          towerId: tower.id,
+          towerType: tower.type,
+          cell: { ...tower.cell },
+          waiting,
+        })
+        return payQueue()
       }
       case 'upgradeTower': {
         const tower = findTower(cmd.towerId)
         if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.phase === 'upgrading') return reject(cmd, 'alreadyUpgrading')
+        if (tower.phase !== 'active') return reject(cmd, 'stillBuilding')
         const cost = upgradeCost(tower.type, tower.level)
         if (cost === null) return reject(cmd, 'maxLevel')
         if (state.money < cost) return reject(cmd, 'notEnoughMoney')
-        tower.level++
+        const ticks = upgradeTicks(tower.type, tower.level as 1 | 2)
+        tower.phase = 'upgrading'
+        tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
+        tower.progress = 0
+        tower.phasePaid = cost
         tower.invested += cost
-        emit({ type: 'towerUpgraded', towerId: tower.id, level: tower.level, cost })
+        emit({
+          type: 'towerUpgradeStarted',
+          towerId: tower.id,
+          toLevel: tower.level + 1,
+          cost,
+          ticks,
+        })
         return addMoney(-cost)
       }
+      case 'cancelUpgrade': {
+        const tower = findTower(cmd.towerId)
+        if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.phase !== 'upgrading') return reject(cmd, 'notUpgrading')
+        const refund = tower.phasePaid
+        tower.invested -= refund
+        endPhase(tower)
+        emit({ type: 'towerUpgradeCancelled', towerId: tower.id, refund })
+        return addMoney(refund)
+      }
+      case 'cancelBuild':
+        return cancelBuild(cmd, cmd.towerId)
       case 'sellTower': {
         const tower = findTower(cmd.towerId)
         if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.phase === 'upgrading') return reject(cmd, 'upgradeInProgress')
+        // продажа строящейся башни = отмена с возвратом 100%
+        if (tower.phase !== 'active') return cancelBuild(cmd, cmd.towerId)
         const refund = sellRefund(tower.invested)
         state.towers = state.towers.filter((t) => t !== tower)
         emit({ type: 'towerSold', towerId: tower.id, refund })
@@ -171,6 +257,14 @@ export function createBattle(opts: BattleOptions): Battle {
       case 'grantMoney': {
         if (!Number.isInteger(cmd.amount) || cmd.amount <= 0) return reject(cmd, 'invalidAmount')
         return addMoney(cmd.amount)
+      }
+      case 'spawnEnemies': {
+        if (!Object.hasOwn(ENEMIES, cmd.enemyType)) return reject(cmd, 'unknownEnemyType')
+        const { count, spacing = 0.5 } = cmd
+        if (!Number.isInteger(count) || count <= 0 || count > 1000 || !(spacing >= 0))
+          return reject(cmd, 'invalidAmount')
+        for (let i = 0; i < count; i++) spawn(cmd.enemyType, Math.min(i * spacing, geom.length / 2))
+        return
       }
       default:
         return reject(cmd, 'unknownCommand')
@@ -224,7 +318,16 @@ export function createBattle(opts: BattleOptions): Battle {
     })
   }
 
+  // центр хитбокса цели
+  function aimPoint(e: EnemyState) {
+    return { x: e.x, y: e.y, z: e.z + ENEMIES[e.type].hitHeight / 2 }
+  }
+
   function fire(tower: TowerState) {
+    if (tower.phase !== 'active') {
+      tower.targetId = null
+      return
+    }
     if (tower.cooldown > 0) {
       tower.cooldown--
       return
@@ -234,32 +337,19 @@ export function createBattle(opts: BattleOptions): Battle {
     tower.targetId = target?.id ?? null
     if (!target) return
     const cfg = TOWERS[tower.type]
-    let tx = target.x
-    let ty = target.y
-    const homing = cfg.splash === 0
-    if (!homing) {
-      // мина летит в упреждённую точку с небольшим разбросом
-      const flight = Math.hypot(target.x - tower.x, target.y - tower.y) / cfg.projectileSpeed
-      const aim = pointAt(geom, target.distance + ENEMIES[target.type].speed * flight)
-      const r = MORTAR_SCATTER * Math.sqrt(random())
-      const a = 2 * Math.PI * random()
-      tx = aim.x + r * Math.cos(a)
-      ty = aim.y + r * Math.sin(a)
-    }
-    const p: ProjectileState = {
+    const p: ProjectileState = createProjectile({
       id: state.nextId++,
       towerId: tower.id,
       targetId: target.id,
-      x: tower.x,
-      y: tower.y,
-      tx,
-      ty,
+      kind: cfg.projectile.kind,
+      from: { x: tower.x, y: tower.y, z: cfg.muzzleHeight },
+      aim: aimPoint(target),
       speed: cfg.projectileSpeed,
+      arcFactor: cfg.projectile.arcFactor,
+      minArc: cfg.projectile.minArc,
       damage: stats.damage,
       damageType: cfg.damageType,
-      splash: cfg.splash,
-      homing,
-    }
+    })
     state.projectiles.push(p)
     tower.cooldown = stats.reloadTicks - 1
     emit({ type: 'projectileFired', projectileId: p.id, towerId: tower.id, targetId: target.id })
@@ -281,7 +371,7 @@ export function createBattle(opts: BattleOptions): Battle {
       })
       // опыт получает только башня, которая ещё стоит
       const tower = findTower(p.towerId)
-      if (!tower) return
+      if (!tower || tower.phase !== 'active') return
       tower.xp += cfg.reward
       const rank = rankForXp(tower.xp)
       if (rank > tower.rank) {
@@ -300,18 +390,10 @@ export function createBattle(opts: BattleOptions): Battle {
   function moveProjectiles() {
     state.projectiles = state.projectiles.filter((p) => {
       const target = state.enemies.find((e) => e.id === p.targetId && e.hp > 0)
-      if (p.homing && target) {
-        p.tx = target.x
-        p.ty = target.y
-      }
-      if (!advanceProjectile(p)) return true
-      if (p.splash > 0) {
-        for (const e of state.enemies) {
-          if (!e.air && Math.hypot(e.x - p.x, e.y - p.y) <= p.splash) damageEnemy(e, p)
-        }
-      } else if (target) {
-        damageEnemy(target, p)
-      }
+      if (!advanceProjectile(p, target && aimPoint(target))) return true
+      emit({ type: 'projectileImpact', x: p.x, y: p.y, z: p.z, kind: p.kind, targetId: p.targetId })
+      // цель погибла в полёте — долетели до последней точки без урона
+      if (target) damageEnemy(target, p)
       return false
     })
     state.enemies = state.enemies.filter((e) => e.hp > 0)
@@ -338,10 +420,12 @@ export function createBattle(opts: BattleOptions): Battle {
       return
     }
     state.tick++
+    advanceConstruction()
     for (const cmd of queue.splice(0)) {
       emit({ type: 'commandApplied', tick: state.tick, cmd })
       apply(cmd)
     }
+    payQueue()
     updateWave()
     moveEnemies()
     if (state.outcome) return

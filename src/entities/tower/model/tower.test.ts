@@ -41,9 +41,9 @@ describe('экономика башен', () => {
   })
 
   it('цена апгрейда берётся из конфига, на максимуме — null', () => {
-    expect(upgradeCost('mortar', 1)).toBe(TOWERS.mortar.levels[1].cost)
-    expect(upgradeCost('mortar', 2)).toBe(TOWERS.mortar.levels[2].cost)
-    expect(upgradeCost('mortar', 3)).toBeNull()
+    expect(upgradeCost('rocket', 1)).toBe(TOWERS.rocket.levels[1].cost)
+    expect(upgradeCost('rocket', 2)).toBe(TOWERS.rocket.levels[2].cost)
+    expect(upgradeCost('rocket', 3)).toBeNull()
   })
 })
 
@@ -58,7 +58,7 @@ describe('выбор цели', () => {
   })
   // башня в (0,0); враги на оси x
   const enemies = [at(1, 1, 10, 50), at(2, 2, 12, 200), at(3, 3, 14, 80), at(4, 10, 30, 999)]
-  const tower = (type: 'machineGun' | 'mortar' | 'antiAir', priority = 'first' as const) => ({
+  const tower = (type: 'machineGun' | 'rocket', priority = 'first' as const) => ({
     type,
     x: 0,
     y: 0,
@@ -83,17 +83,9 @@ describe('выбор цели', () => {
     expect(selectTarget(tower('machineGun'), 0.5, enemies)).toBeNull()
   })
 
-  it('миномёт не стреляет в мёртвую зону 1.5 клетки и по воздуху', () => {
-    const t = { ...tower('mortar'), priority: 'closest' as const }
-    expect(selectTarget(t, 6, enemies)?.id).toBe(2)
-    expect(selectTarget(t, 6, [at(5, 1.4, 50, 10), at(6, 3, 1, 10, true)])).toBeNull()
-  })
-
-  it('ПВО бьёт только воздух, пулемёт — и землю, и воздух', () => {
+  it('пулемёт и ракета бьют и землю, и воздух', () => {
     const mixed = [at(1, 1, 20, 50), at(2, 2, 10, 50, true)]
-    expect(selectTarget(tower('antiAir'), 4, mixed)?.id).toBe(2)
-    expect(selectTarget(tower('antiAir'), 4, [at(1, 1, 20, 50)])).toBeNull()
     expect(selectTarget(tower('machineGun'), 4, mixed)?.id).toBe(1)
-    expect(selectTarget(tower('machineGun'), 4, [at(2, 2, 10, 50, true)])?.id).toBe(2)
+    expect(selectTarget(tower('rocket'), 4, [at(2, 2, 10, 50, true)])?.id).toBe(2)
   })
 })

@@ -10,6 +10,9 @@ import {
 export type TowerLevel = 1 | 2 | 3
 export const MAX_TOWER_LEVEL: TowerLevel = 3
 
+// queued — заказ ждёт оплаты, building — строится, upgrading — улучшается, active — работает
+export type TowerPhase = 'queued' | 'building' | 'upgrading' | 'active'
+
 export interface TowerState {
   id: number
   type: TowerType
@@ -28,6 +31,15 @@ export interface TowerState {
   priority: TargetPriority
   // последняя цель, для debug-оверлея
   targetId: number | null
+  phase: TowerPhase
+  // всего тиков текущей стройки/улучшения (0 у queued и active)
+  phaseTicksTotal: number
+  // осталось тиков (0 в active)
+  phaseTicksLeft: number
+  // прогресс стройки/улучшения 0..1 (queued — 0, active — 1)
+  progress: number
+  // кредиты, оплаченные за текущую стройку/улучшение (возвращаются при отмене)
+  phasePaid: number
 }
 
 export interface TowerStats {
@@ -57,6 +69,15 @@ export function towerStats(type: TowerType, level: TowerLevel, rank: number): To
 // цена следующего уровня или null, если уровень максимальный
 export function upgradeCost(type: TowerType, level: TowerLevel): number | null {
   return level >= MAX_TOWER_LEVEL ? null : TOWERS[type].levels[level as 1 | 2].cost
+}
+
+export function buildTicks(type: TowerType): number {
+  return Math.round(TOWERS[type].buildSeconds * TICK_RATE)
+}
+
+// тиков улучшения с уровня level на следующий
+export function upgradeTicks(type: TowerType, level: 1 | 2): number {
+  return Math.round(TOWERS[type].upgradeSeconds[level - 1]! * TICK_RATE)
 }
 
 export function sellRefund(invested: number): number {

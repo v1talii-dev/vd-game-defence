@@ -47,7 +47,7 @@ describe('реплеи', () => {
   it('recordCommands → runReplay воспроизводит живую партию', () => {
     const battle = createBattle({ seed: 5, level })
     const rec = recordCommands(battle)
-    battle.dispatch({ type: 'placeTower', towerType: 'mortar', cell: { x: 12, y: 8 } })
+    battle.dispatch({ type: 'placeTower', towerType: 'rocket', cell: { x: 12, y: 8 } })
     battle.step(10)
     battle.dispatch({ type: 'startWave' })
     battle.dispatch({ type: 'placeTower', towerType: 'machineGun', cell: { x: 6, y: 5 } })

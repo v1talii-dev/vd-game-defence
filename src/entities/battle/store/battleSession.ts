@@ -15,6 +15,7 @@ import type {
 } from '../model/types'
 
 const TICK_MS = 1000 / TICK_RATE
+const PROGRESS_SYNC_TICKS = 5
 // не больше стольких тиков за кадр, чтобы фризы вкладки не превращались в «догоняние»
 const MAX_TICKS_PER_FRAME = 8 * 4
 
@@ -26,7 +27,10 @@ export const useBattleSession = defineStore('battleSession', () => {
   const battle = shallowRef<Battle | null>(null)
   let recorder: ReturnType<typeof recordCommands> | null = null
   let accumulator = 0
+  let progressSlot = -1
 
+  // счётчик заказов без денег (для тоста)
+  const queuedOrders = ref(0)
   const money = ref(0)
   const hqHp = ref(0)
   const waveNumber = ref(0)
@@ -72,6 +76,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTowerId.value = null
     selectedTower.value = null
     lastRejected.value = null
+    queuedOrders.value = 0
     pendingCell.value = null
     syncWave()
 
@@ -82,7 +87,17 @@ export const useBattleSession = defineStore('battleSession', () => {
     b.on('victory', () => (outcome.value = b.state.outcome))
     b.on('defeat', () => (outcome.value = b.state.outcome))
     b.on('commandRejected', (e) => (lastRejected.value = { reason: e.reason, at: b.state.tick }))
+    // тост «заказ в очереди» — один раз на заказ
+    b.on('towerOrdered', (e) => {
+      if (e.waiting) queuedOrders.value++
+    })
     for (const type of [
+      'towerOrdered',
+      'towerBuildStarted',
+      'towerBuilt',
+      'towerBuildCancelled',
+      'towerUpgradeStarted',
+      'towerUpgradeCancelled',
       'towerUpgraded',
       'towerSold',
       'towerRankUp',
@@ -101,6 +116,12 @@ export const useBattleSession = defineStore('battleSession', () => {
     b.step(n)
     // таймер паузы между волнами обновляем раз в секунду, а не каждый кадр
     if (Math.floor(b.state.tick / TICK_RATE) !== before) syncWave()
+    // прогресс стройки/улучшения выбранной башни — 6 раз в секунду, не каждый кадр
+    if (selectedTower.value && selectedTower.value.phase !== 'active') {
+      const slot = Math.floor(b.state.tick / PROGRESS_SYNC_TICKS)
+      if (slot !== progressSlot) syncSelected()
+      progressSlot = slot
+    }
   }
 
   // Вызывается сценой каждый кадр. Возвращает долю тика для интерполяции.
@@ -162,6 +183,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTowerId,
     selectedTower,
     lastRejected,
+    queuedOrders,
     pendingCell,
     confirmBuild,
     start,

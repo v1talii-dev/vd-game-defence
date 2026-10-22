@@ -1,5 +1,6 @@
-export type TowerType = 'machineGun' | 'rocket' | 'mortar' | 'antiAir'
-export type DamageType = 'bullet' | 'rocket' | 'explosive' | 'antiAir'
+export type TowerType = 'machineGun' | 'rocket'
+export type ProjectileKind = 'bullet' | 'rocket'
+export type DamageType = 'bullet' | 'rocket'
 export type TargetPriority = 'first' | 'strongest' | 'closest'
 
 export interface TowerLevelStats {
@@ -18,10 +19,20 @@ export interface TowerConfig {
   readonly targetsAir: boolean
   // клеток в секунду
   readonly projectileSpeed: number
-  // радиус сплэша в клетках, 0 — одиночная цель
-  readonly splash: number
   // мёртвая зона в клетках
   readonly minRange: number
+  // высота дула над землёй, в клетках
+  readonly muzzleHeight: number
+  // параметры траектории (SPEC §4.7); скорость — projectileSpeed
+  readonly projectile: {
+    readonly kind: ProjectileKind
+    readonly arcFactor: number
+    readonly minArc: number
+  }
+  // секунд на постройку
+  readonly buildSeconds: number
+  // секунд на улучшение до уровня 2 и 3
+  readonly upgradeSeconds: readonly [number, number]
   readonly levels: readonly [TowerLevelStats, TowerLevelStats, TowerLevelStats]
 }
 
@@ -31,8 +42,11 @@ export const TOWERS = {
     targetsGround: true,
     targetsAir: true,
     projectileSpeed: 16,
-    splash: 0,
     minRange: 0,
+    muzzleHeight: 0.5,
+    projectile: { kind: 'bullet', arcFactor: 0, minArc: 0 },
+    buildSeconds: 1.5,
+    upgradeSeconds: [3, 5],
     levels: [
       { cost: 100, damage: 7, reload: 0.25, range: 3.5 },
       { cost: 90, damage: 11, reload: 0.22, range: 3.75 },
@@ -44,38 +58,15 @@ export const TOWERS = {
     targetsGround: true,
     targetsAir: true,
     projectileSpeed: 9,
-    splash: 0,
     minRange: 0,
+    muzzleHeight: 0.5,
+    projectile: { kind: 'rocket', arcFactor: 0.3, minArc: 0 },
+    buildSeconds: 2,
+    upgradeSeconds: [3, 5],
     levels: [
       { cost: 175, damage: 45, reload: 1.2, range: 4 },
       { cost: 140, damage: 70, reload: 1.1, range: 4.5 },
       { cost: 200, damage: 105, reload: 1, range: 5 },
-    ],
-  },
-  mortar: {
-    damageType: 'explosive',
-    targetsGround: true,
-    targetsAir: false,
-    projectileSpeed: 7,
-    splash: 1.5,
-    minRange: 1.5,
-    levels: [
-      { cost: 250, damage: 40, reload: 2.5, range: 6 },
-      { cost: 160, damage: 60, reload: 2.3, range: 6.5 },
-      { cost: 220, damage: 90, reload: 2.1, range: 7 },
-    ],
-  },
-  antiAir: {
-    damageType: 'antiAir',
-    targetsGround: false,
-    targetsAir: true,
-    projectileSpeed: 14,
-    splash: 0,
-    minRange: 0,
-    levels: [
-      { cost: 200, damage: 18, reload: 0.5, range: 4.5 },
-      { cost: 120, damage: 28, reload: 0.45, range: 5 },
-      { cost: 160, damage: 40, reload: 0.4, range: 5.5 },
     ],
   },
 } as const satisfies Record<TowerType, TowerConfig>

@@ -17,8 +17,10 @@ export {
   towerStats,
   upgradeCost,
   sellRefund,
+  buildTicks,
+  upgradeTicks,
+  type TowerPhase,
   type TowerState,
   type TowerLevel,
   type TowerStats,
 } from './model/tower'
-export { createTowerLayer, createTowerView, type TowerView } from './view/towerView'

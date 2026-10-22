@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENEMIES } from '@/entities/enemy/@x/battle'
 import type { LevelData } from '@/entities/level/@x/battle'
-import { TOWERS, type TowerType } from '@/entities/tower/@x/battle'
+import { TOWERS, buildTicks, upgradeTicks, type TowerType } from '@/entities/tower/@x/battle'
 import { waveSchedule } from '@/entities/wave/@x/battle'
 import { TICK_RATE } from '@/shared/config'
 import { DAMAGE_MATRIX, HQ_HP, PREP_SECONDS, START_MONEY } from '../config/battle'
@@ -42,6 +42,7 @@ function setup(opts: Partial<BattleOptions> = {}) {
     'enemyKilled',
     'enemyLeaked',
     'projectileFired',
+    'projectileImpact',
     'victory',
     'defeat',
   ] as const
@@ -66,8 +67,6 @@ describe('матрица урона и брони', () => {
     expect(DAMAGE_MATRIX).toEqual({
       bullet: { infantry: 1, light: 0.6, tank: 0.25, air: 0.75 },
       rocket: { infantry: 0.4, light: 1, tank: 1.25, air: 1 },
-      explosive: { infantry: 1.25, light: 0.8, tank: 0.6, air: 0 },
-      antiAir: { infantry: 0, light: 0, tank: 0, air: 1.5 },
     })
     expect(damageMultiplier('rocket', 'tank')).toBe(1.25)
   })
@@ -137,7 +136,6 @@ describe('команды', () => {
     expect(of('commandRejected').map((e) => e.reason)).toEqual([
       'notBuildable',
       'cellOccupied',
-      'notEnoughMoney',
       'notBuildable',
       'unknownTowerType',
       'towerNotFound',
@@ -149,15 +147,19 @@ describe('команды', () => {
     ])
     // деньги никогда не уходят в минус
     expect(state.money).toBe(50)
-    expect(state.towers).toHaveLength(1)
+    // place(4, 1) без денег не отказ, а заказ в очереди
+    expect(state.towers.map((t) => t.phase)).toEqual(['building', 'queued'])
   })
 
   it('апгрейд до максимума, затем maxLevel', () => {
-    const { state, run, of } = setup({ startMoney: 10_000 })
+    const { battle, state, run, of } = setup({ startMoney: 10_000 })
     run(place(3, 1, 'rocket'))
     const id = state.towers[0]!.id
+    battle.step(buildTicks('rocket'))
     run({ type: 'upgradeTower', towerId: id })
+    battle.step(upgradeTicks('rocket', 1))
     run({ type: 'upgradeTower', towerId: id })
+    battle.step(upgradeTicks('rocket', 2))
     run({ type: 'upgradeTower', towerId: id })
     expect(state.towers[0]).toMatchObject({ level: 3 })
     expect(of('towerUpgraded').map((e) => e.level)).toEqual([2, 3])
@@ -168,18 +170,21 @@ describe('команды', () => {
   })
 
   it('апгрейд без денег отклоняется', () => {
-    const { state, run, of } = setup({ startMoney: 100 })
+    const { battle, state, run, of } = setup({ startMoney: 100 })
     run(place(3, 1))
+    battle.step(buildTicks('machineGun'))
     run({ type: 'upgradeTower', towerId: state.towers[0]!.id })
     expect(of('commandRejected').map((e) => e.reason)).toEqual(['notEnoughMoney'])
     expect(state.money).toBe(0)
   })
 
   it('продажа возвращает 70% всех вложенных денег', () => {
-    const { state, run, of } = setup()
+    const { battle, state, run, of } = setup()
     run(place(3, 1, 'rocket'))
     const id = state.towers[0]!.id
+    battle.step(buildTicks('rocket'))
     run({ type: 'upgradeTower', towerId: id })
+    battle.step(upgradeTicks('rocket', 1))
     const invested = TOWERS.rocket.levels[0].cost + TOWERS.rocket.levels[1].cost
     run({ type: 'sellTower', towerId: id })
     expect(state.towers).toHaveLength(0)
@@ -203,6 +208,20 @@ describe('команды', () => {
     const { state, run } = setup()
     run({ type: 'grantMoney', amount: 1000 })
     expect(state.money).toBe(START_MONEY + 1000)
+  })
+
+  it('spawnEnemies создаёт count врагов вдоль пути и отклоняет неверные аргументы', () => {
+    const { state, run, of } = setup()
+    run({ type: 'spawnEnemies', enemyType: 'grunt', count: 5, spacing: 1 })
+    expect(state.enemies).toHaveLength(5)
+    expect(of('enemySpawned')).toHaveLength(5)
+    expect(new Set(state.enemies.map((e) => Math.round(e.distance))).size).toBe(5)
+    run(
+      { type: 'spawnEnemies', enemyType: 'nope' as never, count: 1 },
+      { type: 'spawnEnemies', enemyType: 'grunt', count: 0 },
+    )
+    expect(state.enemies).toHaveLength(5)
+    expect(of('commandRejected').map((e) => e.reason)).toEqual(['unknownEnemyType', 'invalidAmount'])
   })
 })
 
@@ -262,6 +281,7 @@ describe('бой', () => {
     const { battle, state, run, of } = setup()
     run(place(2, 1))
     const tower = state.towers[0]!
+    battle.step(buildTicks('machineGun'))
     tower.xp = 145
     run({ type: 'startWave' })
     while (of('enemyKilled').length === 0) battle.step()
@@ -278,32 +298,53 @@ describe('бой', () => {
     expect(of('moneyChanged').at(-1)).toMatchObject({ delta: ENEMIES.grunt.reward })
 
     run({ type: 'upgradeTower', towerId: tower.id })
+    battle.step(upgradeTicks('machineGun', 1))
     expect(state.towers[0]).toMatchObject({ level: 2, rank: 1 })
   })
 
-  it('ПВО не стреляет по наземным целям', () => {
-    const { battle, run, of } = setup()
-    run(place(2, 1, 'antiAir'), { type: 'startWave' })
-    battle.step(3 * TICK_RATE)
-    expect(of('enemySpawned').length).toBeGreaterThan(0)
-    expect(of('projectileFired')).toHaveLength(0)
+  it('урон наносится ровно в тик прилёта, а не при выстреле', () => {
+    const { battle, state, run, of } = setup()
+    run(place(2, 1, 'rocket'))
+    run({ type: 'startWave' })
+    while (of('projectileFired').length === 0) battle.step()
+    const enemy = state.enemies[0]!
+    const hp = enemy.hp
+    expect(hp).toBe(ENEMIES[enemy.type].hp)
+    while (of('projectileImpact').length === 0) {
+      expect(enemy.hp).toBe(hp)
+      battle.step()
+    }
+    expect(enemy.hp).toBeLessThan(hp)
+    expect(of('projectileImpact')[0]).toMatchObject({
+      kind: 'rocket',
+      targetId: enemy.id,
+    })
+    expect(of('projectileImpact')[0]!.z).toBeGreaterThanOrEqual(0)
   })
 
-  it('миномёт бьёт сплэшем по земле', () => {
-    const { battle, state, run, of } = setup({ startMoney: 1000 })
-    run(place(5, 5, 'mortar'), { type: 'startWave' })
+  it('цель погибла в полёте — снаряд долетает без урона и без награды', () => {
+    const { battle, state, run, of } = setup()
+    run(place(2, 1, 'rocket'))
+    run({ type: 'startWave' })
     while (of('projectileFired').length === 0) battle.step()
-    while (state.projectiles.length > 0) battle.step()
-    const damaged = state.enemies.filter((e) => e.hp < e.maxHp).length + of('enemyKilled').length
-    expect(damaged).toBeGreaterThan(0)
+    const target = state.enemies.find((e) => e.id === of('projectileFired')[0]!.targetId)!
+    const other = state.enemies.length
+    target.hp = 0
+    const money = state.money
+    for (let i = 0; i < 3 * TICK_RATE && of('projectileImpact').length === 0; i++) battle.step()
+    expect(of('projectileImpact')[0]).toMatchObject({ targetId: target.id })
+    expect(of('enemyKilled')).toHaveLength(0)
+    expect(state.money).toBe(money)
+    expect(other).toBeGreaterThan(0)
   })
 
   it('босс ниже 50% HP один раз выпускает 4 боевиков', () => {
     const { battle, state, run, of } = setup({ startWave: 12, startMoney: 10_000 })
+    run(place(1, 1, 'rocket'))
+    battle.step(buildTicks('rocket'))
     run({ type: 'startWave' })
     const boss = state.enemies.find((e) => e.type === 'boss')!
     boss.hp = boss.maxHp / 2 + 1
-    run(place(1, 1, 'rocket'))
     while (!boss.spawnedMinions) battle.step()
     const grunts = of('enemySpawned').filter((e) => e.enemyType === 'grunt')
     // первые боевики по расписанию волны 12 выходят только через 2 с

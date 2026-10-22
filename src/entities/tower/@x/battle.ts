@@ -6,5 +6,8 @@ export {
   upgradeCost,
   sellRefund,
   selectTarget,
+  buildTicks,
+  upgradeTicks,
+  type TowerPhase,
   type TowerState,
 } from '../model/tower'

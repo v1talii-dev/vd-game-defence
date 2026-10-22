@@ -1,2 +1,1 @@
-export { type ProjectileState } from './model/projectile'
-export { createProjectileLayer } from './view/projectileView'
+export { projectilePosition, type ProjectileState, type ProjectileKind } from './model/projectile'
