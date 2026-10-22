@@ -47,7 +47,7 @@ watch(
 <template>
   <div v-if="step >= 0" class="hint" role="status" data-testid="tutorial">
     <span>{{ text }}</span>
-    <UiButton variant="secondary" data-testid="tutorial-skip" @click="finish">
+    <UiButton variant="secondary" size="sm" data-testid="tutorial-skip" @click="finish">
       {{ t.tutorial.skip }}
     </UiButton>
   </div>
@@ -56,17 +56,18 @@ watch(
 <style scoped>
 .hint {
   position: absolute;
-  top: calc(var(--safe-top) + 78px);
+  top: calc(var(--safe-top) + var(--hud-h) + var(--gap));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: 60vw;
-  padding: 8px 12px;
-  background: rgb(15 18 13 / 94%);
-  box-shadow: inset 0 0 0 1px var(--c-accent);
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  gap: 8px;
+  max-width: 50vw;
+  padding: 4px 8px;
+  font-size: var(--fs-sm);
+  background: var(--panel-bg);
+  border: var(--bw) solid var(--c-accent);
+  border-radius: 4px;
   animation: ui-pop-in 0.25s var(--ease);
   pointer-events: auto;
 }

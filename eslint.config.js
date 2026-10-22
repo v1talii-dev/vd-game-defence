@@ -4,7 +4,7 @@ import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescri
 import prettier from 'eslint-config-prettier'
 
 export default defineConfigWithVueTs(
-  { ignores: ['dist', 'dist-test', 'coverage', 'playwright-report', 'test-results'] },
+  { ignores: ['dist', 'dist-test', 'coverage', 'playwright-report', 'test-results', 'tools', 'tmp-shots'] },
   js.configs.recommended,
   pluginVue.configs['flat/recommended'],
   vueTsConfigs.recommended,
@@ -14,7 +14,7 @@ export default defineConfigWithVueTs(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['phaser', 'phaser/*', 'vue', 'pinia', 'vue-router'] },
+        { patterns: ['three', 'three/*', 'vue', 'pinia', 'vue-router'] },
       ],
       'no-restricted-globals': ['error', 'window', 'document', 'localStorage', 'performance'],
       'no-restricted-properties': [

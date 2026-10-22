@@ -1,34 +1,42 @@
-import type Phaser from 'phaser'
 import { useBattleSession, type Replay } from '@/entities/battle'
 import type { Command } from '@/entities/battle'
 import type { LevelData } from '@/entities/level'
-import { tileCenterToScreen } from '@/shared/lib/iso'
+import type { CameraState } from '@/shared/lib/three'
+import type { ThreeBattle } from './three3d'
 
-/** window.__game для e2e и отладки. Подключается только динамическим import в dev/test. */
-export function installGameApi(level: LevelData, game: Phaser.Game): () => void {
-  const session = useBattleSession()
+/** window.__game для e2e и отладки (только dev/test): общая часть + cellToScreen / setCamera на камере Three */
+export function installGameApi(level: LevelData, battle3d: ThreeBattle): () => void {
+  const toPage = (p: { x: number; y: number }) => {
+    const r = battle3d.canvas.getBoundingClientRect()
+    return { x: r.left + p.x, y: r.top + p.y }
+  }
   const api = {
+    ...commonApi(level),
     get state() {
-      return session.battle?.state ?? null
+      return useBattleSession().battle?.state ?? null
     },
-    /** сцена прошла preload и create: ввод и камера подключены */
     get ready() {
-      return game.scene.isActive('battle')
+      return battle3d.ready()
     },
+    /** Центр клетки (целые x, y клетки; +0.5 добавляется здесь) в CSS-пикселях страницы */
+    cellToScreen: (x: number, y: number) =>
+      toPage(battle3d.rig.cellToScreen({ x: x + 0.5, y: y + 0.5 })),
+    /** Задать камеру (x, y — точка взгляда в клетках, без +0.5); yaw применяется сразу */
+    setCamera: (p: Partial<CameraState>) => battle3d.rig.setState(p),
+    /** Память WebGL (renderer.info.memory) и draw calls последнего кадра */
+    glInfo: () => battle3d.info(),
+  }
+  ;(window as unknown as { __game?: typeof api }).__game = api
+  return () => {
+    delete (window as unknown as { __game?: typeof api }).__game
+  }
+}
+
+function commonApi(level: LevelData) {
+  const session = useBattleSession()
+  return {
     session,
     level,
-    /**
-     * Центрирует камеру на клетке и возвращает client-координаты её центра (центр канваса).
-     * После вызова надо дождаться кадра, чтобы матрица камеры обновилась.
-     */
-    cellToClient(cell: { x: number; y: number }) {
-      const scene = game.scene.getScene('battle')
-      if (!scene) throw new Error('сцена боя не найдена')
-      const w = tileCenterToScreen(cell)
-      scene.cameras.main.centerOn(w.x, w.y)
-      const r = scene.game.canvas.getBoundingClientRect()
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
-    },
     dispatch: (cmd: Command) => session.dispatch(cmd),
     step: (n = 1) => session.step(n),
     setSpeed: (x: 1 | 2 | 8) => {
@@ -53,9 +61,5 @@ export function installGameApi(level: LevelData, game: Phaser.Game): () => void 
         session.dispatch(c.cmd)
       }
     },
-  }
-  ;(window as unknown as { __game?: typeof api }).__game = api
-  return () => {
-    delete (window as unknown as { __game?: typeof api }).__game
   }
 }

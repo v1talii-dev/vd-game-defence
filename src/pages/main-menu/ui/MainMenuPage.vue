@@ -14,7 +14,7 @@ const warn = ref(!progress.storageAvailable)
   <main class="menu">
     <div class="art" aria-hidden="true" />
     <section class="card">
-      <UiIcon name="shield" :size="64" class="emblem" />
+      <UiIcon name="shield" :size="48" class="emblem" />
       <h1>{{ t.title }}</h1>
       <p class="tagline">{{ t.menu.tagline }}</p>
       <div class="best">
@@ -23,7 +23,7 @@ const warn = ref(!progress.storageAvailable)
             v-for="i in 3"
             :key="i"
             :name="i <= stars ? 'star' : 'star-empty'"
-            :size="30"
+            :size="28"
             :class="{ on: i <= stars }"
           />
         </div>
@@ -65,39 +65,25 @@ const warn = ref(!progress.storageAvailable)
     linear-gradient(180deg, #151a11, var(--c-bg));
 }
 .card {
-  --edge: 22px;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  width: min(460px, 90vw);
-  padding: 36px 40px 40px;
+  gap: 10px;
+  width: min(400px, 90vw);
+  padding: 24px 32px 28px;
   box-sizing: border-box;
-  clip-path: polygon(
-    var(--edge) 0,
-    100% 0,
-    100% calc(100% - var(--edge)),
-    calc(100% - var(--edge)) 100%,
-    0 100%,
-    0 var(--edge)
-  );
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 35%),
-    linear-gradient(160deg, rgb(44 52 36 / 94%), rgb(18 22 15 / 96%));
-  box-shadow:
-    inset 0 0 0 2px var(--c-brass),
-    inset 0 0 0 3px rgb(0 0 0 / 65%),
-    inset 0 0 60px rgb(0 0 0 / 50%);
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: var(--r-lg);
   animation: ui-pop-in 0.5s var(--ease);
 }
 .emblem {
   color: var(--c-accent);
-  filter: drop-shadow(0 0 12px rgb(240 166 58 / 45%));
 }
 h1 {
   margin: 0;
-  font-size: 2.6rem;
+  font-size: 2rem;
   line-height: 1.05;
   text-align: center;
   text-transform: uppercase;
@@ -105,7 +91,6 @@ h1 {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 3px 0 rgb(0 0 0 / 70%));
 }
 .tagline {
   margin: 0;
@@ -133,12 +118,11 @@ h1 {
 }
 .stars .on {
   color: var(--c-accent);
-  filter: drop-shadow(0 0 6px rgb(240 166 58 / 60%));
 }
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
 }
 .warn {

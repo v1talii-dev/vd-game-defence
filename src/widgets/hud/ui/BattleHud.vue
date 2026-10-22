@@ -11,6 +11,7 @@ const bonus = computed(() => session.prepSecondsLeft * (session.waveNumber + 1))
 const canStart = computed(
   () => session.wavePhase === 'prep' && session.waveNumber < session.waveTotal,
 )
+const speedLabel = computed(() => t.hud.speed.replace('{n}', session.speed === 1 ? '2' : '1'))
 
 const toast = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -23,67 +24,90 @@ watch(
     timer = setTimeout(() => (toast.value = ''), 1800)
   },
 )
+watch(
+  () => session.queuedOrders,
+  (n) => {
+    if (!n) return
+    toast.value = t.build.orderQueued
+    clearTimeout(timer)
+    timer = setTimeout(() => (toast.value = ''), 1800)
+  },
+)
 </script>
 
 <template>
   <header class="hud">
     <div class="group">
-      <div class="stat money" data-testid="hud-money">
-        <UiIcon name="coin" :size="26" />
-        <span class="cap">{{ t.hud.money }}</span>
+      <div
+        class="stat money"
+        role="group"
+        :title="t.hud.money"
+        :aria-label="t.hud.money"
+        data-testid="hud-money"
+      >
+        <UiIcon name="coin" :size="18" />
         <b class="val">{{ session.money }}</b>
       </div>
-      <div class="stat hq" :class="{ low: hpPct <= 30 }" data-testid="hud-hp">
-        <UiIcon name="shield" :size="26" />
-        <span class="cap">{{ t.hud.hq }}</span>
+      <div
+        class="stat hq"
+        :class="{ low: hpPct <= 30 }"
+        role="group"
+        :title="t.hud.hq"
+        :aria-label="t.hud.hq"
+        data-testid="hud-hp"
+      >
+        <UiIcon name="shield" :size="18" />
         <b class="val">{{ session.hqHp }}/{{ HQ_HP }}</b>
         <i class="bar"><i :style="{ width: hpPct + '%' }" /></i>
       </div>
     </div>
     <div class="group center">
-      <div class="stat wave" data-testid="hud-wave">
-        <UiIcon name="wave" :size="22" />
-        <b class="val">{{
-          t.hud.wave
-            .replace('{n}', String(session.waveNumber))
-            .replace('{total}', String(session.waveTotal))
-        }}</b>
-      </div>
-      <div class="stat timer" data-testid="hud-timer">
-        <UiIcon name="clock" :size="20" />
-        <span>{{
+      <b class="val wave" data-testid="hud-wave">{{
+        t.hud.wave
+          .replace('{n}', String(session.waveNumber))
+          .replace('{total}', String(session.waveTotal))
+      }}</b>
+      <span class="timer" data-testid="hud-timer">
+        ·
+        {{
           session.wavePhase === 'prep'
-            ? t.hud.nextIn.replace('{n}', String(session.prepSecondsLeft))
+            ? t.hud.timerSec.replace('{n}', String(session.prepSecondsLeft))
             : t.hud.waveActive
-        }}</span>
-      </div>
+        }}
+      </span>
       <UiButton
         v-if="canStart"
         class="start"
+        size="sm"
         data-testid="hud-start-wave"
         @click="session.dispatch({ type: 'startWave' })"
       >
-        <UiIcon name="play" :size="16" />
-        {{ bonus > 0 ? t.hud.startWaveBonus.replace('{n}', String(bonus)) : t.hud.startWave }}
+        <UiIcon name="play" :size="14" />
+        {{ t.hud.startWave }}
+        <span v-if="bonus > 0" class="badge">+{{ bonus }}</span>
       </UiButton>
     </div>
     <div class="group">
       <UiButton
+        class="icon-btn"
         variant="secondary"
         :aria-label="t.hud.pause"
+        :title="t.hud.pause"
         data-testid="hud-pause"
         @click="session.paused = !session.paused"
       >
-        <UiIcon name="pause" :size="20" />
+        <UiIcon name="pause" :size="16" />
       </UiButton>
       <UiButton
+        class="icon-btn"
         variant="secondary"
-        :aria-label="t.hud.speed.replace('{n}', session.speed === 1 ? '2' : '1')"
+        :aria-label="speedLabel"
+        :title="speedLabel"
+        :aria-pressed="session.speed !== 1"
         data-testid="hud-speed"
         @click="session.speed = session.speed === 1 ? 2 : 1"
       >
-        <UiIcon name="fast" :size="18" />
-        x{{ session.speed }}
+        <UiIcon name="fast" :size="16" />
       </UiButton>
     </div>
     <div v-if="toast" class="toast" role="status" data-testid="hud-toast">{{ toast }}</div>
@@ -96,69 +120,47 @@ watch(
   top: var(--safe-top);
   left: var(--safe-left);
   right: var(--safe-right);
+  height: var(--hud-h);
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px 14px;
-  isolation: isolate;
+  gap: var(--pad);
+  padding: 0 var(--pad);
+  background: var(--panel-bg);
+  border-bottom: var(--panel-border);
   pointer-events: auto;
-}
-/* фон отдельным слоем: клип по скосу не должен обрезать тост */
-.hud::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 50%),
-    linear-gradient(180deg, rgb(32 38 27 / 95%), rgb(15 18 13 / 92%));
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 6px));
-  box-shadow: inset 0 -2px 0 var(--c-brass);
 }
 .group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--pad);
 }
 .center {
   flex: 1;
   justify-content: center;
+  gap: 4px;
 }
 .stat {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  box-sizing: border-box;
-  background: rgb(0 0 0 / 40%);
-  box-shadow: inset 0 0 0 1px rgb(184 154 82 / 35%);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-.cap {
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--c-muted);
+  gap: 6px;
 }
 .val {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 1.15rem;
+  font-size: var(--fs-md);
   font-variant-numeric: tabular-nums;
 }
 .money {
   color: var(--c-accent);
 }
-.money .val {
-  color: #ffd98a;
-}
 .hq {
   color: var(--c-ok);
-  padding-bottom: 4px;
+  padding-bottom: 5px;
 }
+.money .val,
 .hq .val {
   color: var(--c-text);
 }
@@ -167,10 +169,10 @@ watch(
 }
 .bar {
   position: absolute;
-  left: 6px;
-  right: 6px;
-  bottom: 3px;
-  height: 4px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
   background: rgb(0 0 0 / 60%);
 }
 .bar i {
@@ -184,20 +186,59 @@ watch(
 }
 .timer {
   color: var(--c-muted);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.start {
+  margin-left: var(--gap);
+}
+.badge {
+  padding: 1px 5px;
+  border-radius: var(--r);
+  background: rgb(0 0 0 / 25%);
+  font-size: var(--fs-xs);
+}
+.hud .icon-btn {
+  position: relative;
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+}
+/* увеличенная зона нажатия без роста вида кнопки */
+.hud .icon-btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+.hud .start {
+  min-height: 2rem;
+  font-size: var(--fs-sm);
+}
+.icon-btn[aria-pressed='true'] {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+@media (pointer: coarse) {
+  .hud .icon-btn {
+    width: var(--ui-h-touch);
+    height: var(--ui-h-touch);
+  }
 }
 .toast {
   position: absolute;
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 10px;
-  padding: 10px 20px;
+  margin-top: var(--gap);
+  padding: 6px 12px;
   background: var(--c-danger);
   color: #fff;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 50%), 0 4px 12px rgb(0 0 0 / 50%);
-  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  border-radius: var(--r-lg);
   animation: ui-pop-in 0.2s var(--ease);
 }
 </style>

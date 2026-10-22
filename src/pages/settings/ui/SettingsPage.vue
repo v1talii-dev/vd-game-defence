@@ -10,37 +10,43 @@ const progress = useProgressStore()
   <main class="page">
     <UiPanel class="panel">
       <h1>{{ t.settings.title }}</h1>
-      <label class="row">
-        <span>{{ t.settings.volume }}</span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          :value="progress.settings.volume"
-          @input="
-            progress.updateSettings({ volume: Number(($event.target as HTMLInputElement).value) })
-          "
-        />
-      </label>
-      <label class="row">
-        <span>{{ t.settings.sfx }}</span>
-        <input
-          type="checkbox"
-          :checked="progress.settings.sfx"
-          @change="progress.updateSettings({ sfx: ($event.target as HTMLInputElement).checked })"
-        />
-      </label>
-      <label class="row">
-        <span>{{ t.settings.showRanges }}</span>
-        <input
-          type="checkbox"
-          :checked="progress.settings.showRanges"
-          @change="
-            progress.updateSettings({ showRanges: ($event.target as HTMLInputElement).checked })
-          "
-        />
-      </label>
+      <details open class="sect">
+        <summary>{{ t.settings.sectionSound }}</summary>
+        <label class="row">
+          <span>{{ t.settings.volume }}</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            :value="progress.settings.volume"
+            @input="
+              progress.updateSettings({ volume: Number(($event.target as HTMLInputElement).value) })
+            "
+          />
+        </label>
+        <label class="row">
+          <span>{{ t.settings.sfx }}</span>
+          <input
+            type="checkbox"
+            :checked="progress.settings.sfx"
+            @change="progress.updateSettings({ sfx: ($event.target as HTMLInputElement).checked })"
+          />
+        </label>
+      </details>
+      <details open class="sect">
+        <summary>{{ t.settings.sectionGame }}</summary>
+        <label class="row">
+          <span>{{ t.settings.showRanges }}</span>
+          <input
+            type="checkbox"
+            :checked="progress.settings.showRanges"
+            @change="
+              progress.updateSettings({ showRanges: ($event.target as HTMLInputElement).checked })
+            "
+          />
+        </label>
+      </details>
       <UiButton to="/" variant="secondary" class="back">{{ t.settings.back }}</UiButton>
     </UiPanel>
   </main>
@@ -61,19 +67,27 @@ const progress = useProgressStore()
     linear-gradient(180deg, #151a11, var(--c-bg));
 }
 .panel {
-  width: min(440px, 90vw);
+  width: min(400px, 90vw);
   animation: ui-pop-in 0.3s var(--ease);
 }
 h1 {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
+  font-size: var(--fs-lg);
   color: var(--c-accent);
-  text-transform: uppercase;
+}
+.sect summary {
+  min-height: var(--ui-h);
+  display: flex;
+  align-items: center;
+  color: var(--c-accent);
+  font-weight: 700;
+  cursor: pointer;
 }
 .row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 48px;
+  min-height: max(40px, var(--ui-h));
   border-bottom: 1px solid rgb(184 154 82 / 18%);
   cursor: pointer;
 }
@@ -117,7 +131,7 @@ input:focus-visible {
   outline-offset: 2px;
 }
 .back {
-  margin-top: 20px;
+  margin-top: 12px;
   width: 100%;
 }
 </style>

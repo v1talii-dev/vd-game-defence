@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBattleSession } from '@/entities/battle'
 import { t } from '@/shared/i18n'
-import { UiButton, UiDialog, UiPanel } from '@/shared/ui'
+import { UiButton, UiPanel } from '@/shared/ui'
 
 const emit = defineEmits<{ restart: [] }>()
 const session = useBattleSession()
@@ -36,19 +36,19 @@ onBeforeUnmount(() => {
       <UiButton variant="secondary" @click="router.push('/settings')">
         {{ t.pause.settings }}
       </UiButton>
-      <UiButton variant="secondary" data-testid="pause-exit" @click="confirmExit = true">
+      <div v-if="confirmExit" class="confirm" role="alertdialog" data-testid="pause-exit-confirm">
+        <span>{{ t.pause.exitInline }}</span>
+        <UiButton variant="danger" data-testid="pause-exit-yes" @click="router.push('/')">
+          {{ t.common.yes }}
+        </UiButton>
+        <UiButton variant="secondary" data-testid="pause-exit-no" @click="confirmExit = false">
+          {{ t.common.no }}
+        </UiButton>
+      </div>
+      <UiButton v-else variant="secondary" data-testid="pause-exit" @click="confirmExit = true">
         {{ t.pause.exit }}
       </UiButton>
     </UiPanel>
-    <UiDialog
-      v-if="confirmExit"
-      :title="t.pause.exitConfirmTitle"
-      :message="t.pause.exitConfirmMessage"
-      :confirm-label="t.common.confirm"
-      :cancel-label="t.common.cancel"
-      @confirm="router.push('/')"
-      @cancel="confirmExit = false"
-    />
   </div>
 </template>
 
@@ -59,21 +59,32 @@ onBeforeUnmount(() => {
   z-index: 80;
   display: grid;
   place-items: center;
-  background: radial-gradient(ellipse at center, rgb(0 0 0 / 55%), rgb(0 0 0 / 82%));
+  background: rgb(0 0 0 / 55%);
   animation: ui-fade-in 0.2s var(--ease);
   pointer-events: auto;
 }
 .menu {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-width: 300px;
+  gap: 8px;
+  width: min(260px, 90vw);
   animation: ui-pop-in 0.25s var(--ease);
 }
 h2 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
+  font-size: var(--fs-lg);
   text-align: center;
   color: var(--c-accent);
-  text-transform: uppercase;
+}
+.menu :deep(.btn) {
+  min-height: max(36px, var(--ui-h));
+}
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.confirm span {
+  flex: 1;
 }
 </style>

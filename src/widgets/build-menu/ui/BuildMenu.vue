@@ -2,7 +2,7 @@
 import { useBattleSession } from '@/entities/battle'
 import { TOWERS, TOWER_TYPES, type TowerType } from '@/entities/tower'
 import { t } from '@/shared/i18n'
-import { UiButton, UiIcon } from '@/shared/ui'
+import { UiIcon } from '@/shared/ui'
 
 const session = useBattleSession()
 const cost = (type: TowerType) => TOWERS[type].levels[0].cost
@@ -15,6 +15,10 @@ function cancel() {
   session.pendingCell = null
   session.setBuildType(null)
 }
+
+// название — только в подсказке и aria-label
+const label = (type: TowerType, i: number) =>
+  `${t.towers[type]}, ${cost(type)} (${t.build.hotkey.replace('{k}', String(i + 1))})`
 </script>
 
 <template>
@@ -23,137 +27,126 @@ function cancel() {
       v-for="(type, i) in TOWER_TYPES"
       :key="type"
       class="tower"
-      :class="{ active: session.buildType === type, dim: session.money < cost(type) }"
+      :class="{ active: session.buildType === type, poor: session.money < cost(type) }"
       :aria-pressed="session.buildType === type"
-      :title="t.build.hotkey.replace('{k}', String(i + 1))"
+      :aria-label="label(type, i)"
+      :title="label(type, i)"
       :data-testid="`build-${type}`"
       @click="toggle(type)"
     >
       <kbd class="key">{{ i + 1 }}</kbd>
-      <UiIcon :name="type" :size="34" class="ico" />
-      <span class="name">{{ t.towers[type] }}</span>
-      <span class="cost"><UiIcon name="coin" :size="14" />{{ cost(type) }}</span>
+      <UiIcon :name="type" :size="28" class="ico" />
+      <span class="cost">{{ cost(type) }}</span>
     </button>
     <template v-if="session.pendingCell">
-      <UiButton data-testid="build-confirm" @click="session.confirmBuild()">
-        {{ t.build.confirm }}
-      </UiButton>
-      <UiButton variant="secondary" data-testid="build-cancel" @click="cancel">
-        {{ t.build.cancel }}
-      </UiButton>
+      <button
+        class="act ok"
+        :aria-label="t.build.confirm"
+        :title="t.build.confirm"
+        data-testid="build-confirm"
+        @click="session.confirmBuild()"
+      >
+        <UiIcon name="check" :size="22" />
+      </button>
+      <button
+        class="act"
+        :aria-label="t.build.cancel"
+        :title="t.build.cancel"
+        data-testid="build-cancel"
+        @click="cancel"
+      >
+        <UiIcon name="close" :size="22" />
+      </button>
     </template>
   </nav>
 </template>
 
 <style scoped>
 .build-menu {
+  --slot: 3.75rem;
+
   position: absolute;
   left: var(--safe-left);
   bottom: var(--safe-bottom);
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  padding: 12px 34px 10px 14px;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 6%), transparent 50%),
-    linear-gradient(180deg, rgb(32 38 27 / 95%), rgb(15 18 13 / 94%));
-  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 100%, 0 100%);
-  box-shadow: inset 0 2px 0 var(--c-brass);
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-bottom: 0;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
   pointer-events: auto;
   animation: ui-fade-in 0.3s var(--ease);
 }
-.tower {
+.tower,
+.act {
   position: relative;
-  min-width: 96px;
-  min-height: 84px;
-  padding: 8px 10px 6px;
   box-sizing: border-box;
+  width: var(--slot);
+  height: var(--slot);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
+  padding: 0;
   font: inherit;
   color: var(--c-text);
-  background: linear-gradient(180deg, var(--c-steel-600), var(--c-steel-800));
-  border: 0;
-  box-shadow:
-    inset 0 0 0 1px rgb(0 0 0 / 60%),
-    inset 0 1px 0 rgb(255 255 255 / 20%);
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  background: var(--c-steel-700);
+  border: 2px solid transparent;
+  border-radius: var(--r);
   cursor: pointer;
   transition:
-    filter 0.15s var(--ease),
-    transform 0.1s var(--ease);
+    background-color 0.12s var(--ease),
+    border-color 0.12s var(--ease);
 }
-.tower:hover {
-  filter: brightness(1.2);
+.tower:hover,
+.act:hover {
+  background: var(--c-steel-600);
 }
-.tower:active {
+.tower:active,
+.act:active {
   transform: translateY(1px);
 }
-.tower:focus-visible {
+.tower:focus-visible,
+.act:focus-visible {
   outline: 2px solid var(--c-text);
-  outline-offset: -4px;
+  outline-offset: 1px;
+}
+.tower:hover:not(.active) {
+  border-color: rgb(240 166 58 / 50%);
 }
 .tower.active {
-  background: linear-gradient(180deg, #ffc765, var(--c-accent-dark));
-  color: #1d1409;
-  box-shadow: inset 0 0 0 2px #fff3cf;
+  border-color: var(--c-accent);
 }
 .ico {
   color: var(--c-sand);
 }
-.active .ico {
-  color: #1d1409;
-}
-.name {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
 .cost {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-family: var(--font-display);
-  font-size: 0.85rem;
+  font: 700 0.8125rem / 1 var(--font-body);
   color: var(--c-accent);
 }
-.active .cost {
-  color: #1d1409;
-}
 /* не хватает кредитов */
-.tower.dim {
-  filter: saturate(0.4) brightness(0.75);
-}
-.tower.dim .cost {
+.poor .cost {
   color: var(--c-danger);
 }
 .key {
   position: absolute;
-  top: 4px;
-  left: 10px;
-  min-width: 16px;
-  padding: 0 3px;
-  text-align: center;
-  font: 700 0.65rem/16px var(--font-body);
+  top: 1px;
+  left: 3px;
+  font: 700 var(--fs-xs) / 1 var(--font-body);
   color: var(--c-muted);
-  background: rgb(0 0 0 / 45%);
-  box-shadow: inset 0 0 0 1px rgb(184 154 82 / 40%);
 }
-.active .key {
-  color: #1d1409;
-  background: rgb(255 255 255 / 40%);
+.act.ok {
+  color: var(--c-ok);
 }
 @media (pointer: coarse) {
-  /* bottom sheet на всю ширину */
   .build-menu {
-    left: var(--safe-left);
+    --slot: 4rem;
+
     right: var(--safe-right);
-    transform: none;
     justify-content: center;
-    clip-path: none;
   }
   .key {
     display: none;

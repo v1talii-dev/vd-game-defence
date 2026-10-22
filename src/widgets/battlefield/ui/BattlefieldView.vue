@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type Phaser from 'phaser'
 import { useBattleSession } from '@/entities/battle'
 import { parseTiledLevel, type LevelData } from '@/entities/level'
 import { createLogger, readLocationParams } from '@/shared/lib/debug'
 import { t } from '@/shared/i18n'
-import { UiButton } from '@/shared/ui'
-import { createGame } from '../lib/createGame'
+import { UiButton, UiLoading } from '@/shared/ui'
 
 const LEVEL_ID = 'desert-base'
 const log = createLogger('render')
 
 const host = ref<HTMLDivElement>()
 const failed = ref(false)
+const loading = ref(true)
+// WebGL-контекст потерян: браузер может вернуть его сам (webglcontextrestored)
+const glLost = ref(false)
 const session = useBattleSession()
-let game: Phaser.Game | undefined
 let uninstallApi: (() => void) | undefined
+let dispose3d: (() => void) | undefined
 let disposed = false
 
 async function load() {
@@ -39,10 +40,24 @@ async function load() {
     startWave: params.wave,
   })
   if (params.speed) session.speed = params.speed
-  game = createGame(host.value!, { level, params })
+  const m = await import('../lib/three3d')
+  if (disposed) return
+  const b3d = m.createThreeBattle(host.value!, level, {
+    stress: params.stress,
+    onContextLost: () => (glLost.value = true),
+    onContextRestored: () => (glLost.value = false),
+  })
+  dispose3d = b3d.dispose
+  // ждём первый кадр (GLB, текстуры) — готовность рендера, не симуляции
+  const poll = setInterval(() => {
+    if (disposed || b3d.ready()) {
+      clearInterval(poll)
+      loading.value = false
+    }
+  }, 50)
   if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
-    void import('../lib/debugApi').then((m) => {
-      if (!disposed) uninstallApi = m.installGameApi(level, game!)
+    void import('../lib/debugApi').then((d) => {
+      if (!disposed) uninstallApi = d.installGameApi(level, b3d)
     })
   }
 }
@@ -51,8 +66,7 @@ onMounted(load)
 onBeforeUnmount(() => {
   disposed = true
   uninstallApi?.()
-  game?.destroy(true)
-  game = undefined
+  dispose3d?.()
   session.stop()
 })
 </script>
@@ -60,6 +74,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="battlefield" data-testid="battlefield">
     <div ref="host" class="canvas" />
+    <UiLoading :active="loading && !failed" />
+    <div v-if="glLost" class="error" role="alert" data-testid="gl-lost">
+      <p>{{ t.battlefield.glLost }}</p>
+    </div>
     <div v-if="failed" class="error" role="alert" data-testid="map-error">
       <p>{{ t.battlefield.loadError }}</p>
       <UiButton @click="load">{{ t.battlefield.retry }}</UiButton>

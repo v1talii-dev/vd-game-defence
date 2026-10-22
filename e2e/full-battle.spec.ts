@@ -12,7 +12,7 @@ test('полный бой: победа → экран результата → 
   await openBattle(page, '?seed=1')
   await page.evaluate(() => window.__game!.setSpeed(8))
 
-  // деньги и сильная оборона: башни на клетках, ближайших к пути, четыре типа по кругу
+  // деньги и сильная оборона: башни на клетках, ближайших к пути, два типа по кругу
   const placed = await page.evaluate(() => {
     const g = window.__game!
     g.dispatch({ type: 'grantMoney', amount: 200_000 })
@@ -21,11 +21,12 @@ test('полный бой: победа → экран результата → 
     const dist = (c: { x: number; y: number }) =>
       Math.min(...path.map((p) => Math.hypot(p.x - (c.x + 0.5), p.y - (c.y + 0.5))))
     const cells = [...g.level.buildable].sort((a, b) => dist(a) - dist(b)).slice(0, 40)
-    const types = ['machineGun', 'rocket', 'mortar', 'antiAir']
+    const types = ['machineGun', 'rocket']
     cells.forEach((cell, i) =>
       g.dispatch({ type: 'placeTower', towerType: types[i % types.length], cell }),
     )
-    g.step(1)
+    // башни строятся 2–3 с и до этого не стреляют
+    g.step(120)
     return g.state!.towers.length
   })
   expect(placed).toBeGreaterThan(10)

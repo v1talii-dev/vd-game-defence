@@ -10,7 +10,14 @@ export interface GameApi {
   state: {
     tick: number
     money: number
-    towers: { id: number; type: string; level: number; invested: number; cell: Cell }[]
+    towers: {
+      id: number
+      type: string
+      level: number
+      invested: number
+      cell: Cell
+      phase: string
+    }[]
     enemies: unknown[]
     outcome: { result: 'victory'; stars: number } | { result: 'defeat' } | null
     wave: { phase: 'prep' | 'active'; number: number; total: number }
@@ -21,7 +28,10 @@ export interface GameApi {
   dispatch(cmd: unknown): void
   step(n?: number): void
   setSpeed(x: 1 | 2 | 8): void
-  cellToClient(cell: Cell): { x: number; y: number }
+  /** центр клетки в CSS-пикселях страницы */
+  cellToScreen(x: number, y: number): { x: number; y: number }
+  glInfo(): { geometries: number; textures: number; calls: number; triangles: number }
+  setCamera(p: { x?: number; y?: number; zoom?: number; yaw?: number }): void
 }
 
 declare global {
@@ -82,7 +92,10 @@ export function pickBlocked(page: Page): Promise<Cell> {
 
 /** Центрирует камеру на клетке, ждёт кадра и возвращает client-координаты клетки */
 export async function cellClient(page: Page, cell: Cell): Promise<{ x: number; y: number }> {
-  const pt = await page.evaluate((c) => window.__game!.cellToClient(c), cell)
+  const pt = await page.evaluate((c) => {
+    const g = window.__game!
+    return g.cellToScreen(c.x, c.y)
+  }, cell)
   // матрица камеры обновляется в рендере: ждём два кадра, а не фиксированную паузу
   await page.evaluate(
     () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),

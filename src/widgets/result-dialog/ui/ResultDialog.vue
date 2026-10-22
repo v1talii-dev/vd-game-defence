@@ -40,7 +40,7 @@ watch(
           v-for="i in 3"
           :key="i"
           :name="i <= session.outcome.stars ? 'star' : 'star-empty'"
-          :size="56"
+          :size="36"
           :class="{ on: i <= session.outcome.stars }"
           :style="{ animationDelay: `${0.25 + i * 0.2}s` }"
         />
@@ -64,22 +64,20 @@ watch(
   z-index: 90;
   display: grid;
   place-items: center;
-  background: radial-gradient(ellipse at center, rgb(0 0 0 / 55%), rgb(0 0 0 / 82%));
+  background: rgb(0 0 0 / 55%);
   animation: ui-fade-in 0.2s var(--ease);
   pointer-events: auto;
 }
 .dialog {
-  min-width: 380px;
-  padding: 28px 40px 32px;
+  width: min(300px, 90vw);
+  padding: 16px 20px 20px;
   text-align: center;
   animation: ui-pop-in 0.35s var(--ease);
 }
 h2 {
-  margin: 0 0 14px;
-  font-size: 2.4rem;
-  text-transform: uppercase;
+  margin: 0 0 10px;
+  font-size: 1.5rem;
   color: var(--c-accent);
-  text-shadow: 0 3px 0 rgb(0 0 0 / 70%);
 }
 .defeat h2 {
   color: var(--c-danger);
@@ -87,7 +85,7 @@ h2 {
 .stars {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--c-steel-600);
 }
 .stars > * {
@@ -95,7 +93,6 @@ h2 {
 }
 .stars .on {
   color: var(--c-accent);
-  filter: drop-shadow(0 0 10px rgb(240 166 58 / 70%));
 }
 @keyframes star-in {
   from {
@@ -105,8 +102,10 @@ h2 {
 }
 .actions {
   display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 16px;
+  gap: var(--gap);
+  margin-top: 14px;
+}
+.actions > * {
+  flex: 1;
 }
 </style>

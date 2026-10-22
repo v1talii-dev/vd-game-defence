@@ -28,8 +28,9 @@
   },
   "homepage": "https://github.com/v1talii-dev/vd-game-defence#readme",
   "dependencies": {
-    "phaser": "^3.90.0",
+    "@types/three": "0.186.0",
     "pinia": "^4.1.0",
+    "three": "0.186.1",
     "vue": "^3.5.44",
     "vue-router": "^4.6.4"
   },

@@ -6,6 +6,7 @@ export type IconName =
   | 'star'
   | 'star-empty'
   | 'close'
+  | 'check'
   | 'pause'
   | 'play'
   | 'fast'
@@ -15,8 +16,6 @@ export type IconName =
   | 'clock'
   | 'machineGun'
   | 'rocket'
-  | 'mortar'
-  | 'antiAir'
   | 'upgrade'
   | 'sell'
   | 'damage'
@@ -39,15 +38,17 @@ const icons: Record<IconName, string> = {
   shield: '<path d="M12 2l8 3v6c0 5-3.400 9.300-8 11-4.600-1.700-8-6-8-11V5zm0 4l-4 1.500V11c0 2.800 1.700 5.300 4 6.500 2.300-1.200 4-3.700 4-6.500V7.500z"/>',
   wave: '<path d="M4 3h2v18H4zM7 4h12l-3 4.500L19 13H7z"/>',
   clock: '<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3a7 7 0 110 14 7 7 0 010-14zm-1 2v5.400l3.800 2.200.8-1.300-3-1.800V7z"/>',
-  machineGun: '<path d="M2 10h10l1-2h5v2h4v3h-4v1h-3v3h-3v-3H9l-2 4H4l2-4H2z"/>',
-  rocket: '<path d="M14 2c4 0 8 1 8 1s1 4 1 8l-5 5-3 1-4-4 1-3zM9 15l-3 1-2 4 4-2 1-3zM15 8a1.500 1.500 0 103 0 1.500 1.500 0 00-3 0zM4 12l3-1 2 2-2 2z"/>',
-  mortar: '<path d="M15 2l5 3-3 6-3-2-2 3 3 1-1 2H8l-3 5H2l3-7 2-4 3 1 2-3-2-1z"/><path d="M5 20h14v2H5z"/>',
-  antiAir: '<path d="M11 2h2v7l5-3 1 1.700-5 3.300 6 .5v2l-6 .5 5 3.300-1 1.700-5-3V22h-2v-7l-5 3-1-1.700L9 13l-6-.5v-2L9 10 4 6.700 5 5l6 4z"/>',
+  machineGun:
+    '<path d="M3 18h18l-2 3H5zM10.500 15h3v2.500h-3zM8 8h8v6H8zM16 10h5v2h-5zM21 9h2v4h-2zM3 9h4v5H3zM7 10.500h1v2H7z"/>',
+  rocket:
+    '<path d="M3 20h18v2H3zM9.500 17h5v2.500h-5z"/><g transform="translate(1 4.500) rotate(-28 11 9) scale(.88)"><path fill-rule="evenodd" d="M3 2h16v4H3zM3 7h16v4H3zM3 12h16v4H3zM15.500 4a1.500 1.500 0 103 0 1.500 1.500 0 10-3 0zM15.500 9a1.500 1.500 0 103 0 1.500 1.500 0 10-3 0zM15.500 14a1.500 1.500 0 103 0 1.500 1.500 0 10-3 0z"/></g>',
   upgrade: '<path d="M12 3l8 9h-5v9H9v-9H4z"/>',
   sell: '<path d="M3 6h18v3H3zM5 10h14v11H5zm4 3v5h2v-5zm4 0v5h2v-5z"/>',
   damage: '<path d="M12 1l2.500 6.500L21 6l-3.500 5.500L23 14l-6.500 1L15 22l-3-5-3 5-1.500-7L1 14l5.500-2.500L3 6l6.500 1.500z"/>',
   rate: '<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>',
   range: '<path d="M12 4a8 8 0 100 16 8 8 0 000-16zm0 3a5 5 0 110 10 5 5 0 010-10zm0 3a2 2 0 100 4 2 2 0 000-4zM11 0h2v4h-2zm0 20h2v4h-2zM0 11h4v2H0zm20 0h4v2h-4z"/>',
+  check:
+    '<path d="M4 12.5l5 5L20 6.500" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/>',
   chevron: '<path d="M12 5l8 7h-4.500L12 9 8.500 12H4zM12 12l8 7h-4.500L12 16l-3.500 3H4z"/>',
 }
 const markup = computed(() => icons[props.name])

@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 withDefaults(
   defineProps<{
     variant?: 'primary' | 'secondary' | 'danger'
-    size?: 'md' | 'lg'
+    size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
     type?: 'button' | 'submit'
     /** маршрут: кнопка рендерится ссылкой (для навигации) */
@@ -27,84 +27,68 @@ withDefaults(
 
 <style scoped>
 .btn {
-  --edge: 8px;
-  --top: var(--c-olive-bright);
-  --mid: var(--c-olive);
-  --bot: #34401d;
-  --ink: #f6f3e2;
-  position: relative;
+  --bg: var(--c-steel-700);
+  --bg-hover: var(--c-steel-600);
+  --bd: rgb(184 154 82 / 35%);
+  --ink: var(--c-text);
   box-sizing: border-box;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 22px;
-  border: 0;
-  /* фаски по двум противоположным углам */
-  clip-path: polygon(
-    var(--edge) 0,
-    100% 0,
-    100% calc(100% - var(--edge)),
-    calc(100% - var(--edge)) 100%,
-    0 100%,
-    0 var(--edge)
-  );
-  background: linear-gradient(180deg, var(--top) 0%, var(--mid) 45%, var(--bot) 100%);
-  box-shadow:
-    inset 0 0 0 1px rgb(0 0 0 / 55%),
-    inset 0 2px 0 rgb(255 255 255 / 28%),
-    inset 0 -3px 0 rgb(0 0 0 / 28%);
+  min-width: var(--ui-h);
+  min-height: var(--ui-h);
+  padding: 0 16px;
+  border: var(--bw) solid var(--bd);
+  border-radius: var(--r);
+  background: var(--bg);
   color: var(--ink);
-  font: 700 0.95rem/1 var(--font-body);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font: 700 var(--fs-md) / 1 var(--font-body);
   text-decoration: none;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 70%);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--gap);
   transition:
-    filter 0.15s var(--ease),
-    transform 0.1s var(--ease);
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease);
 }
 .primary {
-  --top: #ffc765;
-  --mid: var(--c-accent);
-  --bot: var(--c-accent-dark);
+  --bg: var(--c-accent);
+  --bg-hover: #f7b95c;
+  --bd: var(--c-accent);
   --ink: #1d1409;
-  text-shadow: 0 1px 0 rgb(255 255 255 / 35%);
-}
-.secondary {
-  --top: #4d5a42;
-  --mid: var(--c-steel-600);
-  --bot: var(--c-steel-800);
-  --ink: var(--c-sand);
 }
 .danger {
-  --top: #e5674c;
-  --mid: var(--c-danger);
-  --bot: #7e2616;
+  --bd: var(--c-danger);
+  --bg-hover: #4a2a22;
+}
+.sm {
+  min-height: var(--ui-h);
+  padding: 0 10px;
+  font-size: var(--fs-sm);
 }
 .lg {
-  min-height: 56px;
-  padding: 0 40px;
-  font-size: 1.15rem;
+  min-height: var(--ui-h-touch);
+  padding: 0 32px;
+  font-size: var(--fs-lg);
   font-family: var(--font-display);
   font-weight: 400;
 }
+@media (pointer: coarse) {
+  .sm {
+    min-height: var(--ui-h-touch);
+  }
+}
 .btn:hover:not(:disabled) {
-  filter: brightness(1.15) saturate(1.1);
+  background: var(--bg-hover);
 }
 .btn:active:not(:disabled) {
   transform: translateY(1px);
-  filter: brightness(0.9);
 }
 .btn:disabled {
-  filter: grayscale(0.9) brightness(0.65);
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .btn:focus-visible {
-  outline: 2px solid var(--c-text);
-  outline-offset: -4px;
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
 }
 </style>
