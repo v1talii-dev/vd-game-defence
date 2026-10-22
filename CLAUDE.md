@@ -4,9 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Браузерный tower defense в стиле C&C Generals: Zero Hour. **Полная спецификация — `docs/SPEC.md`, читай её перед любой задачей.** Проект пока на стадии спеки; код начинается с этапа M0 (каркас).
 
+## Процесс (по «Agentic Coding Design Patterns», облегчённый SDD)
+
+- В начале сессии читай `PROGRESS.md`; обновляй его вместе с коммитом после проверенного шага.
+- `docs/SPEC.md` — целевые требования. Требования меняются сначала в спеке, потом в коде.
+- Крупное изменение — пакет `docs/changes/NNN-имя/tasks.md`: сквозные срезы с проверкой у каждого. Мелкие обратимые правки делай без пакета.
+- Один срез за раз; `[x]` ставится только после проверки и DoD. Закрытый пакет переносится в `docs/changes/archive/`.
+- Перед новым пакетом задай пользователю уточняющие вопросы по развилкам.
+
 ## Стек
 
-Vite + TypeScript (strict) + Vue 3 (UI-оболочка) + Pinia + vue-router (hash) + Phaser 3 (изометрический рендер, карты из Tiled). Тесты: Vitest, Playwright. Линт: ESLint + Prettier + `@feature-sliced/steiger`. Node 24 (`.nvmrc`).
+Vite + TypeScript (strict) + Vue 3 (UI-оболочка) + Pinia + vue-router (hash) + Three.js (3D-рендер, карты из Tiled). Тесты: Vitest, Playwright. Линт: ESLint + Prettier + `@feature-sliced/steiger`. Node 24 (`.nvmrc`).
 
 ## Команды (появятся после M0)
 
@@ -35,8 +43,8 @@ CI: `.github/workflows/ci.yml` — DoD + e2e на каждый PR и push в `ma
 ## Правила архитектуры
 
 - Feature-Sliced Design: `app → pages → widgets → features → entities → shared`. Импорты только вниз и только через `index.ts` слайса. Импорты между сущностями — только через `@x` (например, `entities/tower/@x/battle.ts`), и пользуется ими только `entities/battle`.
-- Симуляция — чистый TS в `entities/*/model` и `shared/lib/sim`: никаких импортов `phaser`, `vue` и DOM. Фиксированный тик 30 Гц, ГСЧ с seed, полный детерминизм: одинаковые seed и команды дают одинаковое состояние.
-- Phaser только рисует состояние симуляции и превращает ввод в команды. Vue получает события симуляции через Pinia и не опрашивает её каждый кадр.
+- Симуляция — чистый TS в `entities/*/model` и `shared/lib/sim`: никаких импортов `three`, `vue` и DOM. Фиксированный тик 30 Гц, ГСЧ с seed, полный детерминизм: одинаковые seed и команды дают одинаковое состояние.
+- Three.js только рисует состояние симуляции и превращает ввод в команды. Vue получает события симуляции через Pinia и не опрашивает её каждый кадр.
 - Числа баланса — в `entities/*/config`, типизированные TS-константы.
 - Debug-API `window.__game` существует только в dev- и test-сборках.
 - Работа с багом: `__game.exportReplay()` → `tests/replays/bugs/` → падающий тест → исправление.
@@ -45,4 +53,4 @@ CI: `.github/workflows/ci.yml` — DoD + e2e на каждый PR и push в `ma
 
 ## Субагенты
 
-В `.claude/agents/`: `sim-engineer`, `render-engineer`, `ui-engineer`, `balance-designer`, `qa-debugger`. Зоны ответственности и правила передачи работы — SPEC §8. Модели заданы в frontmatter агентов: исполнители — `sonnet`; `opus` остаётся за оркестратором (основной сессией); если агент не справляется, оркестратор перезапускает задачу на `opus`. Если изменение затрагивает и симуляцию, и UI, первым фиксируется контракт симуляции (команда или событие + тест).
+В `.claude/agents/`: `sim-engineer`, `render-engineer`, `ui-engineer`, `balance-designer`, `qa-debugger`. Зоны ответственности и правила передачи работы — SPEC §8. Модели заданы в frontmatter агентов: проектные исполнители — `sonnet`; механическая работа (прогон typecheck/lint/test/e2e/build, grep-проверки, скриншоты, правки docs) — агент `runner` на `haiku`; `opus` остаётся за оркестратором (основной сессией); если агент не справляется, оркестратор поднимает модель на ступень (haiku → sonnet → opus). Экономия токенов: короткие промпты и отчёты, без лишних чтений и перепроверок, один прогон e2e на срез. Если изменение затрагивает и симуляцию, и UI, первым фиксируется контракт симуляции (команда или событие + тест).

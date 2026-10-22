@@ -7,3 +7,6 @@ coverage/
 .idea/
 dist-test/
 .playwright-mcp/
+tools/models/_src/
+tmp-shots/
+.claude/worktrees/
