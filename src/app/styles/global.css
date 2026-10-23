@@ -123,6 +123,7 @@ body {
 @media (pointer: coarse) {
   :root {
     --ui-h: 44px;
+    --hud-h: 44px; /* кнопки HUD 44px должны помещаться в полосу */
   }
 }
 

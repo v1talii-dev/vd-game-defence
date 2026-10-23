@@ -226,6 +226,9 @@ watch(
     width: var(--ui-h-touch);
     height: var(--ui-h-touch);
   }
+  .hud .start {
+    min-height: var(--ui-h-touch);
+  }
 }
 .toast {
   position: absolute;
