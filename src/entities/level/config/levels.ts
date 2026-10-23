@@ -37,7 +37,7 @@ export const LEVELS: readonly LevelConfig[] = [
     implemented: true,
   },
   {
-    // заглушка для проверки каркаса (замок, разблокировка), не играбельна; реальный уровень 2 — M13
+    // заглушка для проверки каркаса (замок, разблокировка), не играбельна; реальный уровень 2 — M14
     id: 'stub-2',
     name: 'level.stub2.name',
     tmj: 'assets/maps/desert-base.tmj',
