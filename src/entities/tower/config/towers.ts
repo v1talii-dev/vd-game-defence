@@ -11,6 +11,8 @@ export interface TowerLevelStats {
   readonly reload: number
   // в клетках
   readonly range: number
+  // максимум HP уровня (до множителя ранга)
+  readonly hp: number
 }
 
 export interface TowerConfig {
@@ -48,9 +50,9 @@ export const TOWERS = {
     buildSeconds: 1.5,
     upgradeSeconds: [3, 5],
     levels: [
-      { cost: 100, damage: 7, reload: 0.25, range: 3.5 },
-      { cost: 90, damage: 12, reload: 0.22, range: 3.75 },
-      { cost: 140, damage: 16, reload: 0.2, range: 4 },
+      { cost: 100, damage: 7, reload: 0.25, range: 3.5, hp: 140 },
+      { cost: 90, damage: 12, reload: 0.22, range: 3.75, hp: 180 },
+      { cost: 140, damage: 16, reload: 0.2, range: 4, hp: 230 },
     ],
   },
   rocket: {
@@ -64,9 +66,9 @@ export const TOWERS = {
     buildSeconds: 2,
     upgradeSeconds: [3, 5],
     levels: [
-      { cost: 175, damage: 45, reload: 1.2, range: 4 },
-      { cost: 140, damage: 70, reload: 1.1, range: 4.5 },
-      { cost: 200, damage: 105, reload: 1, range: 5 },
+      { cost: 175, damage: 45, reload: 1.2, range: 4, hp: 180 },
+      { cost: 140, damage: 70, reload: 1.1, range: 4.5, hp: 240 },
+      { cost: 200, damage: 105, reload: 1, range: 5, hp: 300 },
     ],
   },
 } as const satisfies Record<TowerType, TowerConfig>
@@ -81,14 +83,18 @@ export interface RankConfig {
   readonly damage: number
   readonly fireRate: number
   readonly range: number
+  // множитель максимума HP
+  readonly hpMul: number
+  // самолечение: доля максимума HP в секунду, всегда
+  readonly regenPerSec: number
 }
 
 // SPEC §4.4: опыт за убийство = награда за врага
 export const RANKS = [
-  { id: 'private', xp: 0, damage: 1, fireRate: 1, range: 1 },
-  { id: 'veteran', xp: 150, damage: 1.1, fireRate: 1, range: 1 },
-  { id: 'elite', xp: 400, damage: 1.2, fireRate: 1.1, range: 1 },
-  { id: 'hero', xp: 900, damage: 1.35, fireRate: 1.2, range: 1.1 },
+  { id: 'private', xp: 0, damage: 1, fireRate: 1, range: 1, hpMul: 1, regenPerSec: 0 },
+  { id: 'veteran', xp: 150, damage: 1.1, fireRate: 1, range: 1, hpMul: 1.1, regenPerSec: 0.005 },
+  { id: 'elite', xp: 400, damage: 1.2, fireRate: 1.1, range: 1, hpMul: 1.25, regenPerSec: 0.01 },
+  { id: 'hero', xp: 900, damage: 1.35, fireRate: 1.2, range: 1.1, hpMul: 1.4, regenPerSec: 0.02 },
 ] as const satisfies readonly RankConfig[]
 
 // доля вложенных денег, возвращаемая при продаже
@@ -96,3 +102,12 @@ export const SELL_REFUND_RATIO = 0.7
 
 // окно бесплатной отмены: столько секунд после оплаты возврат 100% даже во время волны
 export const FREE_REFUND_SECONDS = 5
+
+// ремонт, восстановление, авторемонт (SPEC §4.3); стартовые числа, итог подбирает D5
+// доля вложений за полный ремонт (цена пропорциональна недостающему HP)
+export const REPAIR_COST_RATIO = 0.35
+export const REPAIR_SECONDS = 4
+// доля максимума HP в секунду вне волны
+export const AUTO_REPAIR_PER_SEC = 0.1
+// доля вложений за восстановление руин
+export const RESTORE_COST_RATIO = 0.6

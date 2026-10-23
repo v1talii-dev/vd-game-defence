@@ -110,6 +110,12 @@ export type BattleEvent =
   | { type: 'enemyKilled'; enemyId: number; enemyType: EnemyType; towerId: number; reward: number }
   | { type: 'enemyLeaked'; enemyId: number; enemyType: EnemyType; damage: number }
   | { type: 'projectileFired'; projectileId: number; towerId: number; targetId: number }
+  // враг выстрелил снарядом shell по башне towerId (M13b)
+  | { type: 'enemyFired'; projectileId: number; enemyId: number; towerId: number }
+  // башня получила урон от снаряда врага; amount — реально снятое HP
+  | { type: 'towerDamaged'; towerId: number; amount: number; hp: number; attackerId: number }
+  // HP = 0: башня стала руинами (ранг и опыт сохранены)
+  | { type: 'towerDestroyed'; towerId: number; x: number; y: number }
   | {
       type: 'projectileImpact'
       x: number

@@ -10,8 +10,9 @@ import {
 export type TowerLevel = 1 | 2 | 3
 export const MAX_TOWER_LEVEL: TowerLevel = 3
 
-// queued — заказ ждёт оплаты, building — строится, upgrading — улучшается, active — работает
-export type TowerPhase = 'queued' | 'building' | 'upgrading' | 'active'
+// queued — заказ ждёт оплаты, building — строится, upgrading — улучшается, active — работает,
+// ruins — разрушена (HP = 0): не стреляет, не цель, клетка занята, ранг и опыт сохранены
+export type TowerPhase = 'queued' | 'building' | 'upgrading' | 'active' | 'ruins'
 
 export interface TowerState {
   id: number
@@ -46,6 +47,9 @@ export interface TowerState {
   paidTick: number
   // сколько вернётся при продаже прямо сейчас (обновляется каждый тик)
   sellRefund: number
+  hp: number
+  // зависит от уровня и ранга
+  maxHp: number
 }
 
 export interface TowerStats {
@@ -70,6 +74,17 @@ export function towerStats(type: TowerType, level: TowerLevel, rank: number): To
     reloadTicks: Math.max(1, Math.round((base.reload * TICK_RATE) / r.fireRate)),
     range: base.range * r.range,
   }
+}
+
+// максимум HP: HP уровня × множитель ранга
+export function towerMaxHp(type: TowerType, level: number, rank: number): number {
+  const r = RANKS[rank] ?? RANKS[0]
+  return Math.round(TOWERS[type].levels[(level - 1) as 0 | 1 | 2].hp * r.hpMul)
+}
+
+// самолечение за тик: доля максимума HP ранга
+export function regenPerTick(rank: number, maxHp: number): number {
+  return (maxHp * (RANKS[rank] ?? RANKS[0]).regenPerSec) / TICK_RATE
 }
 
 // цена следующего уровня или null, если уровень максимальный

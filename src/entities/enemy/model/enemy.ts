@@ -16,6 +16,10 @@ export interface EnemyState {
   air: boolean
   // уже выпустил подкрепление (для босса)
   spawnedMinions: boolean
+  // тиков до следующего выстрела по башне (только у врагов с towerAttack)
+  towerCooldown: number
+  // закреплённая цель — id башни или null
+  towerTargetId: number | null
 }
 
 export interface PathGeometry {
@@ -65,6 +69,8 @@ export function createEnemy(
     maxHp: hp,
     air: cfg.armor === 'air',
     spawnedMinions: false,
+    towerCooldown: 0,
+    towerTargetId: null,
   }
 }
 

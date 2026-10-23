@@ -44,7 +44,8 @@ describe('снаряд', () => {
     const d = Math.sqrt(9 + 16 + 0.0625)
     expect(p.arc).toBeCloseTo(0.3 * d)
     expect(projectilePosition(p, 0.5).z).toBeCloseTo(0.4375 + p.arc)
-    for (let i = 0; i <= 100; i++) expect(projectilePosition(p, i / 100).z).toBeGreaterThanOrEqual(0)
+    for (let i = 0; i <= 100; i++)
+      expect(projectilePosition(p, i / 100).z).toBeGreaterThanOrEqual(0)
   })
 
   it('rocket разгоняется: на t=0.5 пройдена четверть пути', () => {

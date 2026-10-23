@@ -2,8 +2,11 @@ import {
   ENEMIES,
   advanceEnemy,
   createEnemy,
+  ENEMY_MUZZLE_HEIGHT,
+  ENEMY_SHELL_SPEED,
   createPathGeometry,
   type ArmorType,
+  type EnemyConfig,
   type EnemyState,
   type EnemyType,
 } from '@/entities/enemy/@x/battle'
@@ -16,6 +19,8 @@ import {
   FREE_REFUND_SECONDS,
   TOWERS,
   rankForXp,
+  regenPerTick,
+  towerMaxHp,
   selectTarget,
   sellRefund,
   towerStats,
@@ -40,6 +45,10 @@ import type {
 } from './types'
 
 const PREP_TICKS = PREP_SECONDS * TICK_RATE
+// высота центра башни: точка попадания снаряда shell
+const TOWER_HIT_HEIGHT = 0.5
+// дуга снаряда shell: доля дистанции (SPEC §4.7)
+const SHELL_ARC_FACTOR = 0.15
 const PRIORITIES: readonly TargetPriority[] = ['first', 'strongest', 'closest']
 
 export function damageMultiplier(damageType: DamageType, armor: ArmorType): number {
@@ -98,6 +107,9 @@ export function createBattle(opts: BattleOptions): Battle {
   function findTower(id: number): TowerState | undefined {
     return state.towers.find((t) => t.id === id)
   }
+
+  // башню можно бить в active и upgrading; building/queued неуязвимы, ruins — не цель
+  const targetable = (t: TowerState) => t.phase === 'active' || t.phase === 'upgrading'
 
   function endPhase(tower: TowerState) {
     tower.phase = 'active'
@@ -172,6 +184,9 @@ export function createBattle(opts: BattleOptions): Battle {
       if (wasBuilding) emit({ type: 'towerBuilt', towerId: tower.id })
       else {
         tower.level++
+        // улучшение полностью лечит
+        tower.maxHp = towerMaxHp(tower.type, tower.level, tower.rank)
+        tower.hp = tower.maxHp
         emit({ type: 'towerUpgraded', towerId: tower.id, level: tower.level, cost })
       }
     }
@@ -218,6 +233,8 @@ export function createBattle(opts: BattleOptions): Battle {
           upgradeOrder: null,
           paidTick: 0,
           sellRefund: 0,
+          hp: towerMaxHp(cmd.towerType, 1, 0),
+          maxHp: towerMaxHp(cmd.towerType, 1, 0),
         }
         state.towers.push(tower)
         emit({
@@ -423,7 +440,11 @@ export function createBattle(opts: BattleOptions): Battle {
       tower.xp += cfg.reward
       const rank = rankForXp(tower.xp)
       if (rank > tower.rank) {
+        const oldMax = tower.maxHp
         tower.rank = rank
+        tower.maxHp = towerMaxHp(tower.type, tower.level, rank)
+        // текущее HP растёт на ту же разницу — доля не теряется
+        tower.hp += tower.maxHp - oldMax
         emit({ type: 'towerRankUp', towerId: tower.id, rank })
       }
       return
@@ -435,8 +456,99 @@ export function createBattle(opts: BattleOptions): Battle {
     }
   }
 
+  // враг с towerAttack: закреплённая цель, иначе ближайшая башня в радиусе (ничья — меньший id)
+  function pickTower(e: EnemyState, range: number): TowerState | null {
+    const r2 = range * range
+    const dist2 = (t: TowerState) => (t.x - e.x) ** 2 + (t.y - e.y) ** 2
+    const sticky = e.towerTargetId === null ? undefined : findTower(e.towerTargetId)
+    if (sticky && targetable(sticky) && dist2(sticky) <= r2) return sticky
+    let best: TowerState | null = null
+    let bestD = Infinity
+    for (const t of state.towers) {
+      if (!targetable(t)) continue
+      const d = dist2(t)
+      if (d > r2 || d > bestD || (d === bestD && best !== null && best.id < t.id)) continue
+      best = t
+      bestD = d
+    }
+    return best
+  }
+
+  function enemiesAttack() {
+    for (const e of state.enemies) {
+      const atk = (ENEMIES[e.type] as EnemyConfig).towerAttack
+      if (!atk) continue
+      if (e.towerCooldown > 0) {
+        e.towerCooldown--
+        continue
+      }
+      const tower = pickTower(e, atk.range)
+      e.towerTargetId = tower?.id ?? null
+      if (!tower) continue
+      const p = createProjectile({
+        id: state.nextId++,
+        towerId: 0,
+        hostile: true,
+        attackerId: e.id,
+        targetId: tower.id,
+        kind: 'shell',
+        from: { x: e.x, y: e.y, z: ENEMY_MUZZLE_HEIGHT },
+        aim: { x: tower.x, y: tower.y, z: TOWER_HIT_HEIGHT },
+        speed: ENEMY_SHELL_SPEED,
+        arcFactor: SHELL_ARC_FACTOR,
+        minArc: 0,
+        damage: atk.damage,
+        damageType: 'shell',
+      })
+      state.projectiles.push(p)
+      e.towerCooldown = Math.max(1, Math.round(atk.reload * TICK_RATE)) - 1
+      emit({ type: 'enemyFired', projectileId: p.id, enemyId: e.id, towerId: tower.id })
+    }
+  }
+
+  function damageTower(tower: TowerState, p: ProjectileState) {
+    const amount = Math.min(tower.hp, p.damage)
+    tower.hp -= amount
+    emit({
+      type: 'towerDamaged',
+      towerId: tower.id,
+      amount,
+      hp: tower.hp,
+      attackerId: p.attackerId,
+    })
+    if (tower.hp > 0) return
+    // улучшение в процессе сгорает вместе с башней (вложения остаются в invested); заказ улучшения снимается
+    if (tower.upgradeOrder !== null) {
+      tower.upgradeOrder = null
+      emit({ type: 'towerUpgradeCancelled', towerId: tower.id, refund: 0 })
+    }
+    endPhase(tower)
+    tower.phase = 'ruins'
+    tower.cooldown = 0
+    tower.targetId = null
+    emit({ type: 'towerDestroyed', towerId: tower.id, x: tower.x, y: tower.y })
+    // снятый заказ улучшения мог освободить очередь
+    payQueue()
+  }
+
+  function regenTowers() {
+    for (const t of state.towers) {
+      if (!targetable(t) || t.hp >= t.maxHp) continue
+      t.hp = Math.min(t.maxHp, t.hp + regenPerTick(t.rank, t.maxHp))
+    }
+  }
+
   function moveProjectiles() {
     state.projectiles = state.projectiles.filter((p) => {
+      if (p.hostile) {
+        // цель разрушена или продана в полёте — снаряд пропадает без урона
+        const tower = findTower(p.targetId)
+        if (!tower || !targetable(tower)) return false
+        if (!advanceProjectile(p)) return true
+        emit({ type: 'projectileImpact', x: p.x, y: p.y, z: p.z, kind: p.kind, targetId: tower.id })
+        damageTower(tower, p)
+        return false
+      }
       const target = state.enemies.find((e) => e.id === p.targetId && e.hp > 0)
       if (!advanceProjectile(p, target && aimPoint(target))) return true
       emit({ type: 'projectileImpact', x: p.x, y: p.y, z: p.z, kind: p.kind, targetId: p.targetId })
@@ -478,9 +590,12 @@ export function createBattle(opts: BattleOptions): Battle {
     moveEnemies()
     if (state.outcome) return
     for (const tower of state.towers) fire(tower)
+    enemiesAttack()
     moveProjectiles()
+    regenTowers()
     checkWaveCleared()
-    for (const tower of state.towers) tower.sellRefund = currentRefund(tower)
+    for (const tower of state.towers)
+      tower.sellRefund = tower.phase === 'ruins' ? 0 : currentRefund(tower)
   }
 
   return {

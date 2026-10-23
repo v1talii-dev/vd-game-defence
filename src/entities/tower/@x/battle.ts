@@ -1,5 +1,6 @@
 export {
   TOWERS,
+  RANKS,
   FREE_REFUND_SECONDS,
   type TowerType,
   type DamageType,
@@ -9,6 +10,8 @@ export {
   MAX_TOWER_LEVEL,
   rankForXp,
   towerStats,
+  towerMaxHp,
+  regenPerTick,
   upgradeCost,
   sellRefund,
   selectTarget,

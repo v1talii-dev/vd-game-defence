@@ -1,11 +1,15 @@
 import { TICK_RATE } from '@/shared/config'
 import { dist3, lerp, type Vec3 } from '@/shared/lib/sim'
 
-export type ProjectileKind = 'bullet' | 'rocket'
+export type ProjectileKind = 'bullet' | 'rocket' | 'shell'
 
 export interface ProjectileState {
   id: number
+  // башня-стрелок; 0 у снаряда врага (hostile)
   towerId: number
+  // снаряд врага: стреляет attackerId, цель targetId — id башни
+  hostile: boolean
+  attackerId: number
   targetId: number
   kind: ProjectileKind
   // текущая позиция, в клетках (z — высота)
@@ -37,6 +41,8 @@ export interface ProjectileState {
 export interface ProjectileLaunch {
   id: number
   towerId: number
+  hostile?: boolean
+  attackerId?: number
   targetId: number
   kind: ProjectileKind
   from: Vec3
@@ -53,6 +59,8 @@ export function createProjectile(l: ProjectileLaunch): ProjectileState {
   return {
     id: l.id,
     towerId: l.towerId,
+    hostile: l.hostile ?? false,
+    attackerId: l.attackerId ?? 0,
     targetId: l.targetId,
     kind: l.kind,
     x: l.from.x,
