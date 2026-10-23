@@ -22,7 +22,7 @@ export const ENEMIES = {
   grunt: { armor: 'infantry', hp: 45, speed: 1.6, reward: 10, leak: 1, hitHeight: 0.5, flightHeight: 0 },
   grenadier: { armor: 'infantry', hp: 120, speed: 1.1, reward: 18, leak: 2, hitHeight: 0.5, flightHeight: 0 },
   technical: { armor: 'light', hp: 130, speed: 2.6, reward: 16, leak: 2, hitHeight: 0.5, flightHeight: 0 },
-  tank: { armor: 'tank', hp: 600, speed: 0.9, reward: 40, leak: 4, hitHeight: 0.6, flightHeight: 0 },
+  tank: { armor: 'tank', hp: 650, speed: 0.9, reward: 40, leak: 4, hitHeight: 0.6, flightHeight: 0 },
   drone: { armor: 'air', hp: 90, speed: 2.2, reward: 14, leak: 2, hitHeight: 0.3, flightHeight: 1.5 },
   boss: {
     armor: 'tank',

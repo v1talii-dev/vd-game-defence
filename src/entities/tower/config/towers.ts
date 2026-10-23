@@ -49,7 +49,7 @@ export const TOWERS = {
     upgradeSeconds: [3, 5],
     levels: [
       { cost: 100, damage: 7, reload: 0.25, range: 3.5 },
-      { cost: 90, damage: 11, reload: 0.22, range: 3.75 },
+      { cost: 90, damage: 12, reload: 0.22, range: 3.75 },
       { cost: 140, damage: 16, reload: 0.2, range: 4 },
     ],
   },
