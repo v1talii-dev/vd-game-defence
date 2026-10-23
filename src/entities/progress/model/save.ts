@@ -17,6 +17,8 @@ export interface SaveData {
   levels: Record<string, LevelResult>
   settings: Settings
   tutorialDone: boolean
+  /** подсказка «H — клавиши» уже показана */
+  helpHintSeen: boolean
 }
 
 /** Минимальный Storage-подобный интерфейс, чтобы model не знала про localStorage. */
@@ -36,6 +38,7 @@ export function defaultSave(): SaveData {
     levels: {},
     settings: { volume: 0.7, sfx: true, showRanges: false },
     tutorialDone: false,
+    helpHintSeen: false,
   }
 }
 
@@ -77,6 +80,7 @@ export function parseSave(raw: string): SaveData {
     }
   }
   if (typeof json.tutorialDone === 'boolean') def.tutorialDone = json.tutorialDone
+  if (typeof json.helpHintSeen === 'boolean') def.helpHintSeen = json.helpHintSeen
   return def
 }
 

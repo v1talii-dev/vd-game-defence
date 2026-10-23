@@ -9,6 +9,7 @@ export const useProgressStore = defineStore('progress', () => {
   const levels = ref(loaded.data.levels)
   const settings = ref(loaded.data.settings)
   const tutorialDone = ref(loaded.data.tutorialDone)
+  const helpHintSeen = ref(loaded.data.helpHintSeen)
   const storageAvailable = ref(loaded.storageAvailable)
 
   function persist() {
@@ -17,6 +18,7 @@ export const useProgressStore = defineStore('progress', () => {
       levels: levels.value,
       settings: settings.value,
       tutorialDone: tutorialDone.value,
+      helpHintSeen: helpHintSeen.value,
     })
   }
 
@@ -35,10 +37,17 @@ export const useProgressStore = defineStore('progress', () => {
     persist()
   }
 
+  function markHelpHintSeen() {
+    helpHintSeen.value = true
+    persist()
+  }
+
   return {
     levels,
     settings,
     tutorialDone,
+    helpHintSeen,
+    markHelpHintSeen,
     storageAvailable,
     recordResult,
     updateSettings,

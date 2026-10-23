@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { HQ_HP, useBattleSession } from '@/entities/battle'
+import { keyLabel } from '@/shared/config'
 import { t } from '@/shared/i18n'
 import { UiButton, UiIcon } from '@/shared/ui'
 
+const emit = defineEmits<{ help: [] }>()
 const session = useBattleSession()
 
 const hpPct = computed(() => Math.max(0, Math.min(100, (session.hqHp / HQ_HP) * 100)))
@@ -108,6 +110,16 @@ watch(
         @click="session.speed = session.speed === 1 ? 2 : 1"
       >
         <UiIcon name="fast" :size="16" />
+      </UiButton>
+      <UiButton
+        class="icon-btn"
+        variant="secondary"
+        :aria-label="t.help.open"
+        :title="t.help.open + ' (' + keyLabel('help') + ')'"
+        data-testid="hud-help"
+        @click="emit('help')"
+      >
+        ?
       </UiButton>
     </div>
     <div v-if="toast" class="toast" role="status" data-testid="hud-toast">{{ toast }}</div>

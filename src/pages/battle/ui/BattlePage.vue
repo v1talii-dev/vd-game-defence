@@ -6,9 +6,11 @@ import { BuildMenu } from '@/widgets/build-menu'
 import { TowerPanel } from '@/widgets/tower-panel'
 import { ResultDialog } from '@/widgets/result-dialog'
 import { PauseMenu } from '@/widgets/pause-menu'
+import { KeyHelp } from '@/widgets/key-help'
 import { TutorialHints } from '@/widgets/tutorial'
 
 // смена ключа перемонтирует сцену и тем самым перезапускает бой
+const helpOpen = ref(false)
 const runKey = ref(0)
 const restart = () => runKey.value++
 </script>
@@ -17,11 +19,12 @@ const restart = () => runKey.value++
   <div class="battle">
     <BattlefieldView :key="runKey" />
     <div class="ui">
-      <BattleHud />
+      <BattleHud @help="helpOpen = !helpOpen" />
       <BuildMenu />
       <TowerPanel />
       <TutorialHints :key="runKey" />
     </div>
+    <KeyHelp v-model="helpOpen" />
     <PauseMenu @restart="restart" />
     <ResultDialog @restart="restart" />
   </div>

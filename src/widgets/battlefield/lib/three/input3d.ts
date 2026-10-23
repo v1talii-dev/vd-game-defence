@@ -3,7 +3,7 @@ import type { useBattleSession } from '@/entities/battle'
 import { ENEMIES } from '@/entities/enemy'
 import { TOWER_TYPES } from '@/entities/tower'
 import { attachCameraControls3d } from '@/features/camera-controls'
-import { matches, type HotkeyAction } from '@/shared/config'
+import { buildSlotIndex, matches, type HotkeyAction } from '@/shared/config'
 import {
   pickTarget,
   PICK_MIN_RADIUS,
@@ -151,8 +151,9 @@ export function attachInput3d(
     const id = session.selectedTowerId
     const is = (a: HotkeyAction) => matches(a, e.code)
     let handled = true
-    if (/^Digit[1-9]$/.test(e.code) && TOWER_TYPES[Number(e.code.slice(5)) - 1]) {
-      session.setBuildType(TOWER_TYPES[Number(e.code.slice(5)) - 1]!)
+    const slot = buildSlotIndex(e.code)
+    if (slot !== null && TOWER_TYPES[slot]) {
+      session.setBuildType(TOWER_TYPES[slot]!)
       session.pendingCell = null
     } else if (is('upgrade') && id !== null) {
       const t = session.battle?.state.towers.find((t) => t.id === id)
