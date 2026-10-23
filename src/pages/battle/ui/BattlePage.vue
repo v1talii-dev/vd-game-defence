@@ -12,6 +12,8 @@ import { TutorialHints } from '@/widgets/tutorial'
 
 // смена ключа перемонтирует сцену и тем самым перезапускает бой
 const props = defineProps<{ levelId: string }>()
+// панель очереди заказов временно отключена по решению пользователя (2026-10-23); виджет и тесты остаются
+const SHOW_ORDER_QUEUE = false
 const helpOpen = ref(false)
 const runKey = ref(0)
 const restart = () => runKey.value++
@@ -24,7 +26,7 @@ const restart = () => runKey.value++
       <BattleHud @help="helpOpen = !helpOpen" />
       <BuildMenu />
       <TowerPanel />
-      <OrderQueue />
+      <OrderQueue v-if="SHOW_ORDER_QUEUE" />
       <TutorialHints :key="runKey" />
     </div>
     <KeyHelp v-model="helpOpen" />

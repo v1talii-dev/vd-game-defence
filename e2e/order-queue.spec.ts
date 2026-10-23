@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { openBattle } from './helpers'
 
-test('панель очереди: порядок заказов, оплата и отмена', async ({ page }) => {
+// панель очереди временно отключена (BattlePage.SHOW_ORDER_QUEUE = false): включить вместе с панелью
+test.skip('панель очереди: порядок заказов, оплата и отмена', async ({ page }) => {
   await openBattle(page, '?seed=1')
   await expect(page.getByTestId('order-queue')).toBeHidden()
   // время симуляции стоит, двигаем только step(): иначе на медленном CI стройки успевают завершиться
