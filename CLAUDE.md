@@ -36,7 +36,7 @@ Definition of Done: проходят typecheck, lint и test; при измен�
 
 Playwright MCP настроен в `.mcp.json` и работает в видимом окне — пользователь наблюдает за процессом. Используй его для ручных и визуальных проверок на `npm run dev`. Если пользователь хочет смотреть e2e-тесты, запускай `e2e:headed`.
 
-CI: `.github/workflows/ci.yml` — DoD + e2e на каждый PR и push в `main`.
+CI с тестами нет (удалён по решению пользователя 2026-10-23): в GitHub Actions только сборка и деплой. DoD прогоняется локально перед коммитом.
 
 Деплой: GitHub Pages через `.github/workflows/deploy-pages.yml` при push в `main` (репозиторий `v1talii-dev/vd-game-defence`). В Vite должен быть `base: '/vd-game-defence/'`.
 
