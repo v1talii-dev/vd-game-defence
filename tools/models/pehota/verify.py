@@ -1,8 +1,8 @@
 """Проверка GLB: python verify.py (чистый Python, без Blender). Таблица + код возврата 1 при нарушении."""
 import json, struct, sys, os  # запуск: blender -b -P verify.py
 M = os.path.join(os.path.dirname(os.path.abspath(sys.argv[-1] if sys.argv[-1].endswith(".py") else __file__)), "..", "..", "..", "public", "assets", "models")
-LIM = {"enemy_grunt": 300, "enemy_grenadier": 300, "enemy_drone": 600, "deco_ruin": 80}
-NODES = {"enemy_grunt": ["body", "legL", "legR"], "enemy_grenadier": ["body", "legL", "legR"]}
+LIM = {"enemy_grunt": 300, "enemy_grenadier": 300, "enemy_drone": 600, "enemy_runner": 300, "enemy_shield": 300, "deco_ruin": 80}
+NODES = {"enemy_grunt": ["body", "legL", "legR"], "enemy_grenadier": ["body", "legL", "legR"], "enemy_runner": ["body", "legL", "legR"], "enemy_shield": ["body", "legL", "legR"]}
 bad = 0
 print("model | tris | bbox(x y z) | ymin | nodes | mats | col | anim/skin | verdict")
 for n, lim in LIM.items():

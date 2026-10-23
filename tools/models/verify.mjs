@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const DIR = new URL('../../public/assets/models/', import.meta.url)
 const LIMITS = {
-  tower_machinegun: [1200, 1.15], tower_rocket: [1200, 1.15], enemy_technical: [1000, 0.95],
+  tower_machinegun: [1200, 1.15], tower_rocket: [1200, 1.15], tower_flamethrower: [1200, 1.15], enemy_technical: [1000, 0.95],
   enemy_tank: [1500, 0.95], enemy_boss: [2200, 1.5], deco_tree: [500, 1], deco_rock: [500, 1],
 }
 const files = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(LIMITS).map((n) => n + '.glb')
