@@ -46,15 +46,13 @@ class Builder:
         m = Matrix.Translation(c)
         self._add(lambda: bmesh.ops.create_cone(self.bm, cap_ends=True, segments=seg, radius1=r, radius2=r2, depth=length), m, color)
 
-    def finish(self, name, ground=True):
+    def finish(self, name, ground=True, shift=None):
+        """shift — общий сдвиг (см. group_shift), чтобы части одной модели остались на своих местах."""
         bm = self.bm
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-        if ground:
-            ymin = min(v.co.y for v in bm.verts)
-            bmesh.ops.translate(bm, verts=bm.verts[:], vec=(0, -ymin, 0))
-        # центр bbox по XZ в начало координат
-        xs = [v.co.x for v in bm.verts]; zs = [v.co.z for v in bm.verts]
-        bmesh.ops.translate(bm, verts=bm.verts[:], vec=(-(max(xs) + min(xs)) / 2, 0, -(max(zs) + min(zs)) / 2))
+        if shift is None:
+            shift = group_shift([self], ground)
+        bmesh.ops.translate(bm, verts=bm.verts[:], vec=shift)
         for f in bm.faces:
             f.smooth = False
         me = bpy.data.meshes.new(name)
@@ -68,17 +66,35 @@ class Builder:
         return me
 
 
-def export(me, name):
-    """Очистка сцены, один объект `body`, один материал, экспорт GLB (Y вверх)."""
+def group_shift(builders, ground=True):
+    """Сдвиг, общий для группы частей: низ на y=0, центр bbox по XZ в начале координат."""
+    vs = [v.co for b in builders for v in b.bm.verts]
+    ymin = min(v.y for v in vs) if ground else 0.0
+    xs = [v.x for v in vs]; zs = [v.z for v in vs]
+    return (-(max(xs) + min(xs)) / 2, -ymin, -(max(zs) + min(zs)) / 2)
+
+
+def export(me, name, extra=()):
+    """Очистка сцены, объект `body` (+ extra: [(mesh, имя узла, точка вращения в игровых координатах)]),
+    один материал, экспорт GLB (Y вверх). Точка вращения extra-узла — origin узла; вершины в мире не двигаются."""
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o)
-    obj = bpy.data.objects.new("body", me)
-    bpy.context.scene.collection.objects.link(obj)
-    # данные построены в Y-вверх; для экспортёра (+Y up) нужна Blender-Z-вверх: поворот +90° по X
-    obj.rotation_euler = (math.pi / 2, 0, 0)
-    bpy.context.view_layer.objects.active = obj
-    obj.select_set(True)
-    bpy.ops.object.transform_apply(rotation=True)
+    mat = None
+    objs = []
+    for m, n, pv in [(me, "body", (0, 0, 0))] + list(extra):
+        m.transform(Matrix.Translation((-pv[0], -pv[1], -pv[2])))  # вершины относительно точки вращения
+        o = bpy.data.objects.new(n, m)
+        bpy.context.scene.collection.objects.link(o)
+        # данные построены в Y-вверх; для экспортёра (+Y up) нужна Blender-Z-вверх: поворот +90° по X
+        o.rotation_euler = (math.pi / 2, 0, 0)
+        o.location = (pv[0], -pv[2], pv[1])
+        objs.append(o)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+    bpy.ops.object.transform_apply(location=False, rotation=True)
+    obj = objs[0]
     mat = bpy.data.materials.new("mat")
     mat.use_nodes = True
     nt = mat.node_tree
@@ -88,7 +104,8 @@ def export(me, name):
     attr = nt.nodes.new("ShaderNodeVertexColor")
     attr.layer_name = "Col"
     nt.links.new(attr.outputs["Color"], bsdf.inputs["Base Color"])
-    obj.data.materials.append(mat)
+    for o in objs:
+        o.data.materials.append(mat)
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, name + ".glb")
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", export_yup=True, export_apply=True,

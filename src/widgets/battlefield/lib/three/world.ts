@@ -114,7 +114,8 @@ export function buildWorld(scene: Scene, level: LevelData, disposables: Disposab
       }
     }
   }
-  for (const mesh of [roadSegs, pads, trunks, crowns, rocks, ruins]) mesh.instanceMatrix.needsUpdate = true
+  for (const mesh of [roadSegs, pads, trunks, crowns, rocks, ruins])
+    mesh.instanceMatrix.needsUpdate = true
 
   // подмена декора моделями из GLB (дерево — один меш вместо ствола и кроны)
   return {

@@ -10,3 +10,6 @@ dist-test/
 tools/models/_src/
 tmp-shots/
 .claude/worktrees/
+
+__pycache__/
+*.pyc
