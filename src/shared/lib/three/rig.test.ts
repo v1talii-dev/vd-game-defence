@@ -82,7 +82,6 @@ describe('three rig', () => {
     const s = rig.cellToScreen(c)
     expect(s.y).toBeGreaterThan(360)
   })
-
 })
 
 describe('pickTarget', () => {

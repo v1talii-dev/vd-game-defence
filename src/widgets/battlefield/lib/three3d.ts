@@ -1,7 +1,6 @@
 // Three.js-рендер боя (SPEC §3.5). Только читает состояние симуляции.
 import {
   AmbientLight,
-  Color,
   BoxGeometry,
   CircleGeometry,
   ConeGeometry,
@@ -25,7 +24,7 @@ import { createCameraRig, loadGlbParts } from '@/shared/lib/three'
 import { stressSetup } from './stress'
 import { createDebug3d } from './three/debug3d'
 import { createEffects } from './three/effects'
-import { createHud } from './three/hud'
+import { BUILD_COLOR, UPGRADE_COLOR, createHud } from './three/hud'
 import { attachInput3d } from './three/input3d'
 import { createModels, PAD_H } from './three/models'
 import { DECO_GLB, ENEMY_GLB, TOWER_GLB } from './three/modelConfig'
@@ -33,8 +32,6 @@ import { buildWorld } from './three/world'
 
 const ENEMY_CAP = 256
 const TRAIL_STEP = 0.18
-const BUILD_COLOR = new Color(0xffd24a)
-const UPGRADE_COLOR = new Color(0x4ac8ff)
 
 interface EnemyRec {
   px: number
@@ -273,7 +270,13 @@ export function createThreeBattle(
         // стройка/улучшение: модель целиком, прогресс между тиками
         const pr = Math.min(1, t.progress + (t.phaseTicksTotal > 0 ? alpha / t.phaseTicksTotal : 0))
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
-        hud.bar(t.x, PAD_H + 0.95, t.y, pr, t.phase === 'building' ? BUILD_COLOR : UPGRADE_COLOR, 2)
+        hud.progress(
+          t.x,
+          PAD_H + 1.5,
+          t.y,
+          pr,
+          t.phase === 'building' ? BUILD_COLOR : UPGRADE_COLOR,
+        )
       }
       hud.chevrons(t.x, PAD_H + 0.8, t.y, t.rank)
       if (t.id === session.selectedTowerId) {

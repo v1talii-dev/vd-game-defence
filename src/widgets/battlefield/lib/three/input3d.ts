@@ -159,8 +159,8 @@ export function attachInput3d(
     } else if (e.code === 'KeyU' && id !== null) {
       const up = session.battle?.state.towers.find((t) => t.id === id)?.phase === 'upgrading'
       session.dispatch({ type: up ? 'cancelUpgrade' : 'upgradeTower', towerId: id })
-    }
-    else if (e.code === 'KeyS' && id !== null) session.dispatch({ type: 'sellTower', towerId: id })
+    } else if (e.code === 'KeyS' && id !== null)
+      session.dispatch({ type: 'sellTower', towerId: id })
     else if (e.code === 'Escape') cancel()
     else if (e.code === 'Space') session.dispatch({ type: 'startWave' })
     else if (e.code === 'KeyP') session.paused = !session.paused
