@@ -24,6 +24,8 @@ export function installGameApi(level: LevelData, battle3d: ThreeBattle): () => v
     /** Задать камеру (x, y — точка взгляда в клетках, без +0.5); yaw применяется сразу */
     setCamera: (p: Partial<CameraState>) => battle3d.rig.setState(p),
     /** Память WebGL (renderer.info.memory) и draw calls последнего кадра */
+    /** Признаки рендера: стрелки пути, радиус предпросмотра */
+    fxState: () => battle3d.fxState(),
     glInfo: () => battle3d.info(),
   }
   ;(window as unknown as { __game?: typeof api }).__game = api

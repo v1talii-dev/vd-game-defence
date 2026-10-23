@@ -27,6 +27,7 @@ import { createDebug3d } from './three/debug3d'
 import { createEffects } from './three/effects'
 import { BUILD_COLOR, UPGRADE_COLOR, createHud } from './three/hud'
 import { attachInput3d } from './three/input3d'
+import { createPathArrows } from './three/pathArrows'
 import { createModels, PAD_H } from './three/models'
 import { DECO_GLB, ENEMY_GLB, TOWER_GLB } from './three/modelConfig'
 import { buildWorld } from './three/world'
@@ -75,6 +76,8 @@ export interface ThreeBattle {
   /** отрисован хотя бы один кадр */
   ready(): boolean
   /** WebGL-ресурсы и draw calls (для отладки и замеров) */
+  /** признаки рендера для e2e: идёт показ стрелок пути, радиус кольца-предпросмотра */
+  fxState(): { arrowsActive: boolean; arrowStarts: number; previewRange: number | null }
   info(): { geometries: number; textures: number; calls: number; triangles: number }
 }
 
@@ -130,6 +133,17 @@ export function createThreeBattle(
   const ghostTile = new Mesh(ghostGeo, ghostMat)
   ghostTile.visible = false
   scene.add(ghostTile)
+  const arrows = createPathArrows(
+    scene,
+    [level.path],
+    disposables,
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  )
+  arrows.start() // начало боя
+  let previewRange: number | null = null
+  // последняя клетка карты под курсором; пока не было — ближайшая к центру экрана (считается один раз на наведение)
+  let lastHover: { x: number; y: number } | null = null
+  let fallbackCell: { x: number; y: number } | null = null
   const dbg = debugOn ? createDebug3d(host, scene, renderer, disposables) : null
 
   // тени врагов — один InstancedMesh
@@ -202,6 +216,7 @@ export function createThreeBattle(
   if (battle0 && opts.stress) for (const cmd of stressSetup(level.buildable)) battle0.dispatch(cmd)
   if (battle0) {
     offs.push(
+      battle0.on('waveStarted', () => arrows.start()),
       battle0.on('towerBuilt', (e) => flashTower(e.towerId)),
       battle0.on('towerUpgraded', (e) => flashTower(e.towerId)),
       battle0.on('projectileFired', (e) => {
@@ -297,7 +312,7 @@ export function createThreeBattle(
       if (target) a.yaw = Math.atan2(target.x - t.x, target.y - t.y)
       const k = 1 + 0.1 * (t.level - 1)
       if (t.phase === 'queued') {
-        // голограмма модели + спиннер «ждёт кредитов» на высоте кольца прогресса
+        // приглушённая модель + спиннер «ждёт кредитов» на высоте кольца прогресса
         models.place(models.ghosts[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         hud.waiting(t.x, PAD_H + RING_Y, t.y, frameNo / 30)
       } else if (t.phase === 'active') {
@@ -340,6 +355,36 @@ export function createThreeBattle(
         hud.ring(gc.x + 0.5, gc.y + 0.5, selected)
       }
     }
+    // предпросмотр радиуса при наведении на слот меню: кольцо над клеткой под курсором
+    previewRange = null
+    const hbt = session.hoveredBuildType
+    const cur = input.hover()
+    if (cur) {
+      if (!lastHover) lastHover = { x: 0, y: 0 }
+      lastHover.x = cur.x
+      lastHover.y = cur.y
+    }
+    if (!hbt) fallbackCell = null
+    else if (!cur && !lastHover && !fallbackCell) {
+      const c = rig.pickCell(host.clientWidth / 2, host.clientHeight / 2) ?? {
+        x: level.width / 2,
+        y: level.height / 2,
+      }
+      let best = Infinity
+      for (const b of level.buildable) {
+        if (s.towers.some((t) => t.cell.x === b.x && t.cell.y === b.y)) continue
+        const d = (b.x - c.x) ** 2 + (b.y - c.y) ** 2
+        if (d < best) {
+          best = d
+          fallbackCell = b
+        }
+      }
+    }
+    const hc = hbt && selected === null ? (cur ?? lastHover ?? fallbackCell) : null
+    if (hbt && hc && buildable.has(`${hc.x},${hc.y}`)) {
+      previewRange = selected = TOWERS[hbt].levels[0].range
+      hud.ring(hc.x + 0.5, hc.y + 0.5, selected)
+    }
     const en = findEnemy(s.enemies, input.selectedEnemyId())
     if (selected === null && en) {
       const r = enemies.get(en.id)
@@ -374,6 +419,7 @@ export function createThreeBattle(
       projPool.push(r)
     }
 
+    arrows.update(dtMs / 1000)
     fx.update(active ? dtMs * session.speed : 0)
     models.end()
     hud.end()
@@ -441,6 +487,11 @@ export function createThreeBattle(
     rig,
     canvas: renderer.domElement,
     ready: () => rendered,
+    fxState: () => ({
+      arrowsActive: arrows.active(),
+      arrowStarts: arrows.starts(),
+      previewRange,
+    }),
     info: () => ({ ...renderer.info.memory, ...renderer.info.render }),
   }
 }

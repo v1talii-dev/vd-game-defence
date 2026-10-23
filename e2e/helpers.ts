@@ -30,6 +30,7 @@ export interface GameApi {
     selectedTowerId: number | null
     dispatch(c: unknown): void
     select(id: number | null): void
+    setHoveredBuildType(t: string | null): void
   }
   level: { width: number; height: number; path: Cell[]; buildable: Cell[] }
   dispatch(cmd: unknown): void
@@ -37,6 +38,7 @@ export interface GameApi {
   setSpeed(x: 1 | 2 | 8): void
   /** центр клетки в CSS-пикселях страницы */
   cellToScreen(x: number, y: number): { x: number; y: number }
+  fxState(): { arrowsActive: boolean; arrowStarts: number; previewRange: number | null }
   glInfo(): { geometries: number; textures: number; calls: number; triangles: number }
   setCamera(p: { x?: number; y?: number; zoom?: number; yaw?: number }): void
 }
