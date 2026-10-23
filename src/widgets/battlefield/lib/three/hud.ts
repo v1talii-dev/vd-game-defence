@@ -67,27 +67,13 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
   scene.add(ring)
   disposables.push(ringGeo, ringMat)
 
-  const waitGeo = new RingGeometry(0.42, 0.46, 40).rotateX(-Math.PI / 2)
-  const waitMat = new MeshBasicMaterial({
-    color: 0xff4a1a,
-    transparent: true,
-    opacity: 0.85,
-    depthWrite: false,
-    depthTest: false,
-  })
-  const wait = new InstancedMesh(waitGeo, waitMat, 64)
-  wait.count = 0
-  wait.renderOrder = 9
-  wait.frustumCulled = false
-  scene.add(wait)
-  disposables.push(waitGeo, waitMat, wait)
-
   // кольцо прогресса: один билборд-квад на башню, заливка по часовой от верха считается в шейдере
   const pGeo = new PlaneGeometry(1, 1)
   const pData = new InstancedBufferAttribute(new Float32Array(PROG_CAP * 4), 4) // progress, r, g, b
   pData.setUsage(DynamicDrawUsage)
   pGeo.setAttribute('aData', pData)
   const pMat = new ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
     transparent: true,
     depthTest: false,
     depthWrite: false,
@@ -103,6 +89,7 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
     fragmentShader: `
       varying vec2 vUv;
       varying vec4 vData;
+      uniform float uTime;
       void main() {
         float r = length(vUv);
         float edge = fwidth(r);
@@ -110,6 +97,11 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
         if (a <= 0.0) discard;
         float t = atan(vUv.x, vUv.y) / 6.2831853;
         t = t < 0.0 ? t + 1.0 : t;
+        if (vData.x < 0.0) {
+          float d = mod(t - uTime * 0.4, 1.0);
+          gl_FragColor = vec4(vData.yzw, a * (d < 0.18 ? 1.0 : 0.25));
+          return;
+        }
         vec3 col = t <= vData.x ? vData.yzw : vec3(0.08, 0.07, 0.05);
         gl_FragColor = vec4(col, a * (t <= vData.x ? 1.0 : 0.7));
       }`,
@@ -122,7 +114,6 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
   disposables.push(pGeo, pMat, prog)
 
   let nProg = 0
-  let nWait = 0
   let nBar = 0
   let nChev = 0
   const put = (
@@ -140,7 +131,16 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
 
   return {
     begin() {
-      nBar = nChev = nWait = nProg = 0
+      nBar = nChev = nProg = 0
+    },
+    /** то же кольцо в режиме «ждёт кредитов»: короткий сегмент медленно вращается (спиннер); t — секунды */
+    waiting(wx: number, wy: number, wz: number, t: number, size = 0.36) {
+      if (nProg >= PROG_CAP) return
+      put(prog, nProg, wx, wy, wz, size, size)
+      writeProgress(pData.array as Float32Array, nProg, 0, WAIT_COLOR)
+      ;(pData.array as Float32Array)[nProg * 4] = -1 // признак режима «ожидание»
+      pMat.uniforms.uTime!.value = t
+      nProg++
     },
     /** кольцо прогресса над точкой (билборд), заливка по часовой от верха; progress 0..1, color — 0xRRGGBB */
     progress(wx: number, wy: number, wz: number, progress: number, color: number, size = 0.36) {
@@ -160,14 +160,6 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
       fill.setColorAt(nBar, color ?? _c.copy(LOW).lerp(FULL, ratio))
       nBar++
     },
-    /** пульсирующее кольцо «ждёт кредитов»; t — время в секундах */
-    waiting(wx: number, wy: number, wz: number, t: number) {
-      if (nWait >= 64) return
-      // тонкое кольцо в пределах клетки: пульс слабый, чтобы не наползать на соседей
-      const k = 1 + 0.05 * Math.sin(t * 6)
-      waitMat.opacity = 0.65 + 0.35 * Math.sin(t * 6)
-      wait.setMatrixAt(nWait++, _m.makeScale(k, 1, k).setPosition(wx, wy, wz))
-    },
     /** rank шевронов, стопкой вверх от (wx, wy, wz) */
     chevrons(wx: number, wy: number, wz: number, rank: number) {
       for (let i = 0; i < rank && nChev < CAP; i++) put(chev, nChev++, wx, wy + i * 0.11, wz, 2)
@@ -183,11 +175,9 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
     end() {
       bg.count = fill.count = nBar
       chev.count = nChev
-      wait.count = nWait
       prog.count = nProg
       prog.instanceMatrix.needsUpdate = true
       pData.needsUpdate = true
-      wait.instanceMatrix.needsUpdate = true
       for (const m of [bg, fill, chev]) m.instanceMatrix.needsUpdate = true
       if (fill.instanceColor) fill.instanceColor.needsUpdate = true
     },
@@ -199,6 +189,7 @@ const PAD_RING_Y = 0.13
 /** Цвета кольца прогресса */
 export const BUILD_COLOR = 0xffd24a
 export const UPGRADE_COLOR = 0x4ac8ff
+export const WAIT_COLOR = 0xc9a24a
 
 /** Пишет [progress, r, g, b] экземпляра i в плоский буфер; progress зажат в 0..1 */
 export function writeProgress(arr: Float32Array, i: number, progress: number, color: number) {

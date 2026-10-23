@@ -67,7 +67,11 @@ export function createModels(scene: Scene, disposables: Disposables) {
   const box = (w: number, h: number, d: number) => g(new BoxGeometry(w, h, d))
 
   // детали одного типа (корпус / голова) склеиваются в одну геометрию с цветами вершин: 2 draw calls на модель
-  const build = (specs: PartSpec[], cap: number): Model => {
+  const build = (
+    specs: PartSpec[],
+    cap: number,
+    mat: MeshLambertMaterial = new MeshLambertMaterial({ vertexColors: true }),
+  ): Model => {
     const parts: Part[] = []
     for (const head of [false, true]) {
       const group = specs.filter((sp) => !!sp.head === head)
@@ -91,7 +95,6 @@ export function createModels(scene: Scene, disposables: Disposables) {
       })
       const merged = mergeGeometries(geos)
       for (const geo of geos) geo.dispose()
-      const mat = new MeshLambertMaterial({ vertexColors: true })
       disposables.push(merged, mat)
       const mesh = new InstancedMesh(merged, mat, cap)
       mesh.count = 0
@@ -104,38 +107,38 @@ export function createModels(scene: Scene, disposables: Disposables) {
   }
 
   const tubeGeo = g(new CylinderGeometry(0.1, 0.1, 0.55, 10))
-  const towers: Record<TowerType, Model> = {
+  const towerSpecs: Record<TowerType, PartSpec[]> = {
     // пулемёт: узкий серо-синий цилиндр с длинным тонким стволом
-    machineGun: build(
-      [
-        { geo: g(new CylinderGeometry(0.3, 0.36, 0.25, 12)), color: 0x5a6b7a, pos: [0, 0.125, 0] },
-        { geo: box(0.28, 0.2, 0.3), color: 0x7c8fa0, pos: [0, 0.35, 0], head: true },
-        { geo: box(0.07, 0.07, 0.6), color: 0x23292f, pos: [0, 0.37, 0.4], head: true },
-      ],
-      TOWER_CAP,
-    ),
+    machineGun: [
+      { geo: g(new CylinderGeometry(0.3, 0.36, 0.25, 12)), color: 0x5a6b7a, pos: [0, 0.125, 0] },
+      { geo: box(0.28, 0.2, 0.3), color: 0x7c8fa0, pos: [0, 0.35, 0], head: true },
+      { geo: box(0.07, 0.07, 0.6), color: 0x23292f, pos: [0, 0.37, 0.4], head: true },
+    ],
     // ракета: широкая приземистая рыже-красная база и две толстые трубы-пусковые
-    rocket: build(
-      [
-        { geo: g(new CylinderGeometry(0.4, 0.46, 0.2, 6)), color: 0x8a4a3a, pos: [0, 0.1, 0] },
-        { geo: box(0.55, 0.26, 0.4), color: 0xb35d44, pos: [0, 0.33, 0], head: true },
-        {
-          geo: tubeGeo,
-          color: 0xd9a441,
-          pos: [-0.17, 0.5, 0.2],
-          rot: [Math.PI / 2, 0, 0],
-          head: true,
-        },
-        {
-          geo: tubeGeo,
-          color: 0xd9a441,
-          pos: [0.17, 0.5, 0.2],
-          rot: [Math.PI / 2, 0, 0],
-          head: true,
-        },
-      ],
-      TOWER_CAP,
-    ),
+    rocket: [
+      { geo: g(new CylinderGeometry(0.4, 0.46, 0.2, 6)), color: 0x8a4a3a, pos: [0, 0.1, 0] },
+      { geo: box(0.55, 0.26, 0.4), color: 0xb35d44, pos: [0, 0.33, 0], head: true },
+      { geo: tubeGeo, color: 0xd9a441, pos: [-0.17, 0.5, 0.2], rot: [Math.PI / 2, 0, 0], head: true },
+      { geo: tubeGeo, color: 0xd9a441, pos: [0.17, 0.5, 0.2], rot: [Math.PI / 2, 0, 0], head: true },
+    ],
+  }
+  const towers = {
+    machineGun: build(towerSpecs.machineGun, TOWER_CAP),
+    rocket: build(towerSpecs.rocket, TOWER_CAP),
+  }
+  // голограмма заказа в очереди: те же модели, полупрозрачный голубой материал без записи глубины
+  const ghostMat = new MeshLambertMaterial({
+    vertexColors: true,
+    color: 0x9fe3ff,
+    emissive: 0x0a4a66,
+    transparent: true,
+    opacity: 0.45,
+    depthWrite: false,
+  })
+  disposables.push(ghostMat)
+  const ghosts: Record<TowerType, Model> = {
+    machineGun: build(towerSpecs.machineGun, TOWER_CAP, ghostMat),
+    rocket: build(towerSpecs.rocket, TOWER_CAP, ghostMat),
   }
 
   const gunGeo = box(0.08, 0.08, 0.6)
@@ -195,7 +198,7 @@ export function createModels(scene: Scene, disposables: Disposables) {
       ENEMY_CAP,
     ),
   }
-  const all: Model[] = [...Object.values(towers), ...Object.values(enemies)]
+  const all: Model[] = [...Object.values(towers), ...Object.values(ghosts), ...Object.values(enemies)]
 
   /** Подмена примитивов моделями из GLB: те же Model, части корпус/голова заменяются на месте. */
   const applyGlb = (
@@ -225,12 +228,15 @@ export function createModels(scene: Scene, disposables: Disposables) {
 
   return {
     towers,
+    ghosts,
     enemies,
     applyGlbs(loaded: Map<string, GlbPart[]>) {
       const mat = new MeshLambertMaterial({ vertexColors: true })
       disposables.push(mat)
-      for (const [k, spec] of Object.entries(TOWER_GLB))
+      for (const [k, spec] of Object.entries(TOWER_GLB)) {
         applyGlb(towers[k as TowerType], spec, loaded.get(spec.file), mat)
+        applyGlb(ghosts[k as TowerType], spec, loaded.get(spec.file), ghostMat)
+      }
       for (const [k, spec] of Object.entries(ENEMY_GLB))
         applyGlb(enemies[k as EnemyType], spec, loaded.get(spec.file), mat)
     },

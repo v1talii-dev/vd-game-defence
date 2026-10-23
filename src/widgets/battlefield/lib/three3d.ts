@@ -261,9 +261,9 @@ export function createThreeBattle(
       if (target) a.yaw = Math.atan2(target.x - t.x, target.y - t.y)
       const k = 1 + 0.1 * (t.level - 1)
       if (t.phase === 'queued') {
-        // «призрак»: модель целиком + пульсирующее кольцо (дёшево, без прозрачного материала)
-        models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
-        hud.waiting(t.x, PAD_H + 0.03, t.y, frameNo / 30)
+        // голограмма модели + спиннер «ждёт кредитов» на высоте кольца прогресса
+        models.place(models.ghosts[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
+        hud.waiting(t.x, PAD_H + 1.5, t.y, frameNo / 30)
       } else if (t.phase === 'active') {
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
       } else {
