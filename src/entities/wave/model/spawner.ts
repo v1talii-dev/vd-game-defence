@@ -1,17 +1,18 @@
 import { TICK_RATE } from '@/shared/config'
-import { WAVES } from '../config/waves'
+import { WAVES, type WaveConfig } from '../config/waves'
 
 export interface SpawnEntry {
   // тик от начала волны
   tick: number
-  enemy: (typeof WAVES)[number]['groups'][number]['enemy']
+  enemy: string
 }
 
 export const WAVE_COUNT = WAVES.length
 
-// расписание спавна волны (номер с 1), отсортировано по тику, при равенстве — по порядку групп
-export function waveSchedule(wave: number): SpawnEntry[] {
-  const cfg = WAVES[wave - 1]
+// расписание спавна волны (номер с 1), отсортировано по тику, при равенстве — по порядку групп;
+// waves — волны уровня (по умолчанию общие WAVES)
+export function waveSchedule(wave: number, waves: readonly WaveConfig[] = WAVES): SpawnEntry[] {
+  const cfg = waves[wave - 1]
   if (!cfg) return []
   const out: SpawnEntry[] = []
   for (const g of cfg.groups) {

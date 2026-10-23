@@ -7,7 +7,11 @@ import {
   type EnemyState,
   type EnemyType,
 } from '@/entities/enemy/@x/battle'
-import { advanceProjectile, createProjectile, type ProjectileState } from '@/entities/projectile/@x/battle'
+import {
+  advanceProjectile,
+  createProjectile,
+  type ProjectileState,
+} from '@/entities/projectile/@x/battle'
 import {
   TOWERS,
   rankForXp,
@@ -24,13 +28,7 @@ import {
 import { WAVE_COUNT, waveSchedule } from '@/entities/wave/@x/battle'
 import { TICK_RATE } from '@/shared/config'
 import { createEmitter, seedRng } from '@/shared/lib/sim'
-import {
-  DAMAGE_MATRIX,
-  HQ_HP,
-  PREP_SECONDS,
-  STAR_THRESHOLDS,
-  START_MONEY,
-} from '../config/battle'
+import { DAMAGE_MATRIX, HQ_HP, PREP_SECONDS, STAR_THRESHOLDS, START_MONEY } from '../config/battle'
 import type {
   Battle,
   BattleEvent,
@@ -52,9 +50,12 @@ export function starsForHp(hp: number): 1 | 2 | 3 {
 }
 
 export function createBattle(opts: BattleOptions): Battle {
-  const { level } = opts
-  const startMoney = opts.startMoney ?? START_MONEY
-  const startWave = Math.max(1, Math.min(WAVE_COUNT, Math.floor(opts.startWave ?? 1)))
+  const { level, config } = opts
+  const startMoney = opts.startMoney ?? config?.startMoney ?? START_MONEY
+  const waves = config?.waves
+  const waveCount = waves?.length ?? WAVE_COUNT
+  const hpScale = config?.hpScale ?? 1
+  const startWave = Math.max(1, Math.min(waveCount, Math.floor(opts.startWave ?? 1)))
   const geom = createPathGeometry(level.path)
   const buildable = new Set(level.buildable.map((c) => `${c.x},${c.y}`))
   const emitter = createEmitter<BattleEvent>()
@@ -68,10 +69,10 @@ export function createBattle(opts: BattleOptions): Battle {
     rng: seedRng(opts.seed),
     nextId: 1,
     money: startMoney,
-    hqHp: HQ_HP,
+    hqHp: config?.hqHp ?? HQ_HP,
     wave: {
       number: startWave - 1,
-      total: WAVE_COUNT,
+      total: waveCount,
       phase: 'prep',
       prepTicksLeft: PREP_TICKS,
       elapsedTicks: 0,
@@ -115,8 +116,7 @@ export function createBattle(opts: BattleOptions): Battle {
     payQueue()
   }
 
-  const hasOrders = () =>
-    state.towers.some((t) => t.phase === 'queued' || t.upgradeOrder !== null)
+  const hasOrders = () => state.towers.some((t) => t.phase === 'queued' || t.upgradeOrder !== null)
 
   function startUpgrade(tower: TowerState, cost: number) {
     const ticks = upgradeTicks(tower.type, tower.level as 1 | 2)
@@ -178,6 +178,8 @@ export function createBattle(opts: BattleOptions): Battle {
     switch (cmd.type) {
       case 'placeTower': {
         if (!Object.hasOwn(TOWERS, cmd.towerType)) return reject(cmd, 'unknownTowerType')
+        if (config && !config.allowedTowers.includes(cmd.towerType))
+          return reject(cmd, 'towerNotAllowed')
         const { x, y } = cmd.cell ?? { x: NaN, y: NaN }
         if (!buildable.has(`${x},${y}`)) return reject(cmd, 'notBuildable')
         if (state.towers.some((t) => t.cell.x === x && t.cell.y === y))
@@ -318,7 +320,7 @@ export function createBattle(opts: BattleOptions): Battle {
   }
 
   function spawn(type: EnemyType, distance = 0) {
-    const enemy = createEnemy(state.nextId++, type, geom, distance)
+    const enemy = createEnemy(state.nextId++, type, geom, distance, hpScale)
     state.enemies.push(enemy)
     emit({ type: 'enemySpawned', enemyId: enemy.id, enemyType: type })
   }
@@ -329,9 +331,9 @@ export function createBattle(opts: BattleOptions): Battle {
       if (--w.prepTicksLeft <= 0) startNextWave(false)
       else return
     }
-    const schedule = waveSchedule(w.number)
+    const schedule = waveSchedule(w.number, waves)
     while (w.spawnIndex < schedule.length && schedule[w.spawnIndex]!.tick <= w.elapsedTicks) {
-      spawn(schedule[w.spawnIndex++]!.enemy)
+      spawn(schedule[w.spawnIndex++]!.enemy as EnemyType)
     }
     w.elapsedTicks++
   }
@@ -436,7 +438,7 @@ export function createBattle(opts: BattleOptions): Battle {
   function checkWaveCleared() {
     const w = state.wave
     if (w.phase !== 'active' || state.enemies.length > 0) return
-    if (w.spawnIndex < waveSchedule(w.number).length) return
+    if (w.spawnIndex < waveSchedule(w.number, waves).length) return
     emit({ type: 'waveCleared', wave: w.number })
     if (w.number >= w.total) {
       const stars = starsForHp(state.hqHp)

@@ -51,16 +51,18 @@ export function createEnemy(
   type: EnemyType,
   geom: PathGeometry,
   distance = 0,
+  hpScale = 1,
 ): EnemyState {
   const cfg = ENEMIES[type]
+  const hp = cfg.hp * hpScale
   return {
     id,
     type,
     ...pointAt(geom, distance),
     z: cfg.flightHeight,
     distance,
-    hp: cfg.hp,
-    maxHp: cfg.hp,
+    hp,
+    maxHp: hp,
     air: cfg.armor === 'air',
     spawnedMinions: false,
   }

@@ -1,5 +1,5 @@
 import type { EnemyState, EnemyType } from '@/entities/enemy/@x/battle'
-import type { LevelData } from '@/entities/level/@x/battle'
+import type { LevelConfig, LevelData } from '@/entities/level/@x/battle'
 import type { ProjectileKind, ProjectileState } from '@/entities/projectile/@x/battle'
 import type { TargetPriority, TowerState, TowerType } from '@/entities/tower/@x/battle'
 
@@ -29,6 +29,8 @@ export type RejectReason =
   | 'notBuildable'
   | 'cellOccupied'
   | 'unknownTowerType'
+  // башня не входит в allowedTowers уровня
+  | 'towerNotAllowed'
   | 'towerNotFound'
   | 'maxLevel'
   | 'alreadyUpgrading'
@@ -90,7 +92,13 @@ export type BattleEvent =
   | { type: 'towerBuildCancelled'; towerId: number; refund: number }
   | { type: 'towerUpgradeStarted'; towerId: number; toLevel: number; cost: number; ticks: number }
   // улучшение заказано, но не оплачено (встало в общую очередь); оплата → towerUpgradeStarted
-  | { type: 'towerUpgradeOrdered'; towerId: number; toLevel: number; cost: number; waiting: boolean }
+  | {
+      type: 'towerUpgradeOrdered'
+      towerId: number
+      toLevel: number
+      cost: number
+      waiting: boolean
+    }
   // refund 0 для неоплаченного заказа
   | { type: 'towerUpgradeCancelled'; towerId: number; refund: number }
   // улучшение завершено (level — новый уровень)
@@ -119,6 +127,9 @@ export type BattleEventOf<T extends BattleEventType> = Extract<BattleEvent, { ty
 export interface BattleOptions {
   seed: number
   level: LevelData
+  // данные уровня: волны, деньги, HP штаба, hpScale, allowedTowers; без него — общие значения по умолчанию
+  config?: LevelConfig
+  // перекрывает config.startMoney (debug, реплеи)
   startMoney?: number
   // начать с этой волны (debug ?wave=N): перед ней всё равно идёт пауза подготовки
   startWave?: number

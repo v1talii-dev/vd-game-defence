@@ -1,4 +1,4 @@
-import type { LevelData } from '@/entities/level/@x/battle'
+import type { LevelConfig, LevelData } from '@/entities/level/@x/battle'
 import { TICK_RATE } from '@/shared/config'
 import { createBattle } from './battle'
 import type { Battle, Command } from './types'
@@ -33,12 +33,18 @@ export function recordCommands(battle: Battle): { replay(): Replay; stop(): void
 }
 
 // проигрывает реплей headless до untilTick или до конца боя
-export function runReplay(replay: Replay, level: LevelData, untilTick?: number): Battle {
+export function runReplay(
+  replay: Replay,
+  level: LevelData,
+  untilTick?: number,
+  config?: LevelConfig,
+): Battle {
   if (replay.levelId !== level.id)
     throw new Error(`Реплей для карты ${replay.levelId}, а передана ${level.id}`)
   const battle = createBattle({
     seed: replay.seed,
     level,
+    config,
     startMoney: replay.startMoney,
     startWave: replay.startWave,
   })

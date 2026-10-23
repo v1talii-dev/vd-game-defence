@@ -4,6 +4,10 @@ import { openBattle } from './helpers'
 test('панель очереди: порядок заказов, оплата и отмена', async ({ page }) => {
   await openBattle(page, '?seed=1')
   await expect(page.getByTestId('order-queue')).toBeHidden()
+  // время симуляции стоит, двигаем только step(): иначе на медленном CI стройки успевают завершиться
+  await page.evaluate(() => {
+    ;(window.__game!.session as unknown as { speed: number }).speed = 0
+  })
 
   // тратим деньги до двух неоплаченных заказов постройки, затем заказываем улучшение
   const ids = await page.evaluate(() => {
@@ -23,11 +27,16 @@ test('панель очереди: порядок заказов, оплата �
     return g.state!.towers.map((t) => t.id)
   })
   const rows = page.locator('[data-testid^="order-build-"], [data-testid^="order-upgrade-"]')
-  const queuedBuilds = await page.evaluate(() =>
-    window.__game!.state!.towers.filter((t) => t.phase === 'queued').map((t) => t.id),
+  const waitingOrders = await page.evaluate(
+    () =>
+      window.__game!.state!.towers.filter((t) => t.phase === 'queued' || t.upgradeOrder !== null)
+        .length,
   )
+  // компактная панель показывает 4 строки, остальное — под «ещё N»
+  const more = page.getByTestId('order-more')
+  if (await more.isVisible()) await more.click()
   const waiting = page.locator('[data-status="waiting"]')
-  await expect(waiting).toHaveCount(queuedBuilds.length + 1)
+  await expect(waiting).toHaveCount(waitingOrders)
   // порядок FIFO: две постройки (по id), затем улучшение
   const order = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
   expect(order.at(-1)).toBe(`order-upgrade-${ids[0]}`)
@@ -47,5 +56,7 @@ test('панель очереди: порядок заказов, оплата �
   // отмена крестиком убирает строку
   const before = await rows.count()
   await page.getByTestId('order-cancel').first().click()
+  // команды применяются на тике, а время симуляции в тесте стоит
+  await page.evaluate(() => window.__game!.step(1))
   await expect(rows).toHaveCount(before - 1)
 })
