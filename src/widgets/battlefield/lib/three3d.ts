@@ -43,7 +43,13 @@ interface EnemyRec {
   yaw: number
   tick: number
   seen: number
+  // пройденный путь (для фазы шага) и признак движения на последнем тике
+  dist: number
+  moving: boolean
 }
+
+// длина полного цикла шага в клетках пути
+const STRIDE = 0.6
 
 interface ProjRec {
   missile: Mesh
@@ -221,11 +227,24 @@ export function createThreeBattle(
       const cfg = ENEMIES[e.type]
       let r = enemies.get(e.id)
       if (!r) {
-        r = { px: e.x, py: e.y, pz: e.z, x: e.x, y: e.y, z: e.z, yaw: 0, tick: s.tick, seen: 0 }
+        r = {
+          px: e.x,
+          py: e.y,
+          pz: e.z,
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          yaw: 0,
+          tick: s.tick,
+          seen: 0,
+          dist: 0,
+          moving: false,
+        }
         enemies.set(e.id, r)
       }
       r.seen = frameNo
       if (r.tick !== s.tick) {
+        if (r.moving) r.dist += Math.hypot(r.x - r.px, r.y - r.py)
         r.px = r.x
         r.py = r.y
         r.pz = r.z
@@ -233,13 +252,26 @@ export function createThreeBattle(
         r.y = e.y
         r.z = e.z
         r.tick = s.tick
-        if (Math.abs(r.x - r.px) + Math.abs(r.y - r.py) > 1e-4)
-          r.yaw = Math.atan2(r.x - r.px, r.y - r.py)
+        r.moving = Math.abs(r.x - r.px) + Math.abs(r.y - r.py) > 1e-4
+        if (r.moving) r.yaw = Math.atan2(r.x - r.px, r.y - r.py)
       }
       const x = r.px + (r.x - r.px) * alpha
       const y = r.py + (r.y - r.py) * alpha
       const z = r.pz + (r.z - r.pz) * alpha
-      models.place(models.enemies[e.type], x, z, y, r.yaw, r.yaw)
+      // фаза шага от пути за тик: на паузе (alpha не меняется) и на месте ноги стоят
+      const walk = r.moving ? Math.hypot(r.x - r.px, r.y - r.py) * alpha : 0
+      const phase = ((r.dist + walk) / STRIDE) * Math.PI * 2
+      models.place(
+        models.enemies[e.type],
+        x,
+        z,
+        y,
+        r.yaw,
+        r.yaw,
+        1,
+        1,
+        r.moving ? phase : undefined,
+      )
       if (nSh < ENEMY_CAP) {
         // тень дрона меньше и бледнее с высотой
         const k = 0.6 / (1 + z * 0.6)

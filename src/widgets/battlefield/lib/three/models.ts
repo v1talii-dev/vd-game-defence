@@ -37,6 +37,8 @@ interface Part {
   mesh: InstancedMesh
   local: Matrix4
   head: boolean
+  // ноги пехоты: знак качания (противофаза), 0 — не нога
+  leg: number
 }
 
 export interface Model {
@@ -60,6 +62,9 @@ const _s = new Vector3()
 const _root = new Matrix4()
 const _headM = new Matrix4()
 const _m = new Matrix4()
+const _swing = new Matrix4()
+// амплитуда качания ног, рад (~28°)
+const LEG_SWING = 0.49
 const UP = new Vector3(0, 1, 0)
 
 export function createModels(scene: Scene, disposables: Disposables) {
@@ -101,7 +106,7 @@ export function createModels(scene: Scene, disposables: Disposables) {
       mesh.frustumCulled = false
       scene.add(mesh)
       disposables.push(mesh)
-      parts.push({ mesh, local: new Matrix4(), head })
+      parts.push({ mesh, local: new Matrix4(), head, leg: 0 })
     }
     return { parts, n: 0, cap }
   }
@@ -238,7 +243,12 @@ export function createModels(scene: Scene, disposables: Disposables) {
         .makeRotationY(spec.yawFix)
         .multiply(new Matrix4().makeScale(spec.scale, spec.scale, spec.scale))
         .multiply(gp.matrix)
-      return { mesh, local, head: HEAD_NODES.has(gp.name) }
+      return {
+        mesh,
+        local,
+        head: HEAD_NODES.has(gp.name),
+        leg: gp.name === 'legL' ? 1 : gp.name === 'legR' ? -1 : 0,
+      }
     })
   }
 
@@ -269,6 +279,7 @@ export function createModels(scene: Scene, disposables: Disposables) {
       headYaw: number,
       k = 1,
       ky = k,
+      phase?: number,
     ) {
       if (m.n >= m.cap) return
       _p.set(wx, wy, wz)
@@ -277,6 +288,9 @@ export function createModels(scene: Scene, disposables: Disposables) {
       _headM.compose(_p, _q.setFromAxisAngle(UP, headYaw), _s)
       for (const part of m.parts) {
         _m.multiplyMatrices(part.head ? _headM : _root, part.local)
+        // качание вокруг бедра (начало узла); без phase ноги стоят
+        if (part.leg && phase !== undefined)
+          _m.multiply(_swing.makeRotationX(part.leg * LEG_SWING * Math.sin(phase)))
         part.mesh.setMatrixAt(m.n, _m)
       }
       m.n++
