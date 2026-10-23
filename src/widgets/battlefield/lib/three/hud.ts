@@ -108,12 +108,9 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
         } else {
           col = u <= vData.x ? vData.yzw : vec3(0.1, 0.09, 0.08);
         }
-        // тонкая белая обводка по краю; внутри незаполненная часть и центр — лёгкая тёмная заливка
-        float edge = smoothstep(0.89, 0.89 + e, r);
-        float alpha = mix(0.4, 1.0, band);
-        if (u > vData.x && vData.x >= 0.0) alpha = mix(0.4, 0.55, band);
-        col = mix(col, vec3(1.0), edge);
-        alpha = mix(alpha, 1.0, edge);
+        // без обводки; незаполненная часть и центр — лёгкая тёмная полупрозрачная заливка
+        float alpha = mix(0.45, 1.0, band);
+        if (u > vData.x && vData.x >= 0.0) alpha = mix(0.45, 0.6, band);
         if (r < 0.46) col = vec3(0.05, 0.04, 0.03);
         gl_FragColor = vec4(col, alpha * disc);
       }`,

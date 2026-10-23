@@ -143,15 +143,16 @@ export function createModels(scene: Scene, disposables: Disposables) {
     machineGun: build(towerSpecs.machineGun, TOWER_CAP),
     rocket: build(towerSpecs.rocket, TOWER_CAP),
   }
-  // голограмма заказа в очереди: те же модели, полупрозрачный голубой материал без записи глубины
-  const ghostMat = new MeshLambertMaterial({
-    vertexColors: true,
-    color: 0x9fe3ff,
-    emissive: 0x0a4a66,
-    transparent: true,
-    opacity: 0.45,
-    depthWrite: false,
-  })
+  // заказ в очереди: те же модели, непрозрачные, цвета вершин обесцвечены к серо-синему «чертёжному» тону
+  const ghostMat = new MeshLambertMaterial({ vertexColors: true })
+  ghostMat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+      float gl = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(gl) * vec3(0.7, 0.85, 1.1), 0.7) * 0.8;`,
+    )
+  }
   disposables.push(ghostMat)
   const ghosts: Record<TowerType, Model> = {
     machineGun: build(towerSpecs.machineGun, TOWER_CAP, ghostMat),
