@@ -31,6 +31,7 @@ function setup(startMoney: number) {
     'towerBuilt',
     'towerBuildCancelled',
     'towerUpgradeStarted',
+    'towerUpgradeOrdered',
     'towerUpgradeCancelled',
     'towerUpgraded',
     'towerSold',
@@ -196,6 +197,107 @@ describe('время улучшения', () => {
     run({ type: 'sellTower', towerId: state.towers[0]!.id })
     expect(of('commandRejected').at(-1)?.reason).toBe('upgradeInProgress')
     expect(state.towers).toHaveLength(1)
+  })
+})
+
+describe('очередь улучшений', () => {
+  const UP = TOWERS.machineGun.levels[1].cost
+  // башня MG построена, денег 0
+  function ready() {
+    const ctx = setup(MG)
+    ctx.run(ctx.place(1))
+    ctx.battle.step(buildTicks('machineGun'))
+    return { ...ctx, tower: ctx.state.towers[0]! }
+  }
+  const up = (t: { id: number }): Command => ({ type: 'upgradeTower', towerId: t.id })
+
+  it('без денег — заказ вместо отказа; оплата при появлении денег', () => {
+    const { state, run, of, tower } = ready()
+    run(up(tower))
+    expect(of('commandRejected')).toHaveLength(0)
+    expect(tower).toMatchObject({ phase: 'active', level: 1 })
+    expect(tower.upgradeOrder).not.toBeNull()
+    expect(of('towerUpgradeOrdered')).toEqual([
+      { type: 'towerUpgradeOrdered', towerId: tower.id, toLevel: 2, cost: UP, waiting: true },
+    ])
+    run({ type: 'grantMoney', amount: UP })
+    expect(tower).toMatchObject({ phase: 'upgrading', upgradeOrder: null, phasePaid: UP })
+    expect(state.money).toBe(0)
+    expect(of('towerUpgradeStarted')).toHaveLength(1)
+  })
+
+  it('FIFO вперемешку с постройкой: порядок по номеру заказа', () => {
+    const { state, run, place, tower } = ready()
+    run(up(tower), place(2)) // заказ улучшения раньше постройки
+    run({ type: 'grantMoney', amount: MG })
+    expect([tower.phase, state.towers[1]!.phase]).toEqual(['upgrading', 'queued'])
+    run({ type: 'grantMoney', amount: MG })
+    expect(state.towers[1]!.phase).toBe('building')
+
+    // обратный порядок: постройка раньше улучшения
+    const b = ready()
+    b.run(b.place(2), up(b.tower))
+    b.run({ type: 'grantMoney', amount: MG })
+    expect([b.state.towers[1]!.phase, b.tower.phase]).toEqual(['building', 'active'])
+    expect(b.tower.upgradeOrder).not.toBeNull()
+  })
+
+  it('при деньгах, но непустой очереди заказ ждёт', () => {
+    const { state, run, place, tower } = ready()
+    run(place(2, 'rocket'), up(tower)) // ракета в очереди (денег нет)
+    run({ type: 'grantMoney', amount: UP + 1 })
+    expect(tower.upgradeOrder).not.toBeNull()
+    expect(state.towers[1]!.phase).toBe('queued')
+  })
+
+  it('cancelUpgrade снимает заказ без возврата', () => {
+    const { state, run, of, tower } = ready()
+    run(up(tower))
+    run({ type: 'cancelUpgrade', towerId: tower.id })
+    expect(tower).toMatchObject({ phase: 'active', upgradeOrder: null, invested: MG })
+    expect(of('towerUpgradeCancelled')).toEqual([
+      { type: 'towerUpgradeCancelled', towerId: tower.id, refund: 0 },
+    ])
+    run({ type: 'grantMoney', amount: UP })
+    expect(tower.phase).toBe('active')
+    expect(state.money).toBe(UP)
+  })
+
+  it('продажа с заказом: заказ снимается, возврат 70% вложенного', () => {
+    const { state, run, of, tower } = ready()
+    run(up(tower))
+    run({ type: 'sellTower', towerId: tower.id })
+    expect(of('towerUpgradeCancelled')).toHaveLength(1)
+    expect(of('towerSold')).toHaveLength(1)
+    expect(state.towers).toHaveLength(0)
+    expect(state.money).toBe(Math.floor(MG * 0.7))
+  })
+
+  it('повторный заказ отклоняется', () => {
+    const { run, of, tower } = ready()
+    run(up(tower), up(tower))
+    expect(of('commandRejected').map((e) => e.reason)).toEqual(['alreadyUpgrading'])
+    expect(of('towerUpgradeOrdered')).toHaveLength(1)
+  })
+
+  it('башня в ожидании улучшения стреляет', () => {
+    const { battle, state, run, of, tower } = ready()
+    run(up(tower), { type: 'spawnEnemies', enemyType: 'grunt', count: 1 })
+    state.enemies[0]!.distance = 2
+    battle.step(20)
+    expect(of('projectileFired').length).toBeGreaterThan(0)
+  })
+
+  it('детерминизм с заказами', () => {
+    const play = () => {
+      const { battle, state, run, place, tower } = ready()
+      run(up(tower), place(2))
+      battle.step(50)
+      run({ type: 'grantMoney', amount: 500 })
+      battle.step(300)
+      return hashState(state)
+    }
+    expect(play()).toBe(play())
   })
 })
 

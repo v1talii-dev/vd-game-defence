@@ -115,10 +115,35 @@ export function createBattle(opts: BattleOptions): Battle {
     payQueue()
   }
 
+  const hasOrders = () =>
+    state.towers.some((t) => t.phase === 'queued' || t.upgradeOrder !== null)
+
+  function startUpgrade(tower: TowerState, cost: number) {
+    const ticks = upgradeTicks(tower.type, tower.level as 1 | 2)
+    tower.phase = 'upgrading'
+    tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
+    tower.progress = 0
+    tower.phasePaid = cost
+    tower.invested += cost
+    emit({ type: 'towerUpgradeStarted', towerId: tower.id, toLevel: tower.level + 1, cost, ticks })
+    addMoney(-cost)
+  }
+
   // оплата заказов строго по порядку: пока первый не оплачен, следующие ждут
   function payQueue() {
-    for (const tower of state.towers) {
-      if (tower.phase !== 'queued') continue
+    // общая FIFO: queued-башни по id и заказы улучшений по upgradeOrder
+    const orders = state.towers
+      .filter((t) => t.phase === 'queued' || (t.phase === 'active' && t.upgradeOrder !== null))
+      .sort((a, b) => (a.upgradeOrder ?? a.id) - (b.upgradeOrder ?? b.id))
+    for (const tower of orders) {
+      if (tower.phase === 'active') {
+        const upCost = upgradeCost(tower.type, tower.level)
+        if (upCost === null) return
+        if (state.money < upCost) return
+        tower.upgradeOrder = null
+        startUpgrade(tower, upCost)
+        continue
+      }
       const cost = TOWERS[tower.type].levels[0].cost
       if (state.money < cost) return
       const ticks = buildTicks(tower.type)
@@ -159,7 +184,7 @@ export function createBattle(opts: BattleOptions): Battle {
           return reject(cmd, 'cellOccupied')
         const cost = TOWERS[cmd.towerType].levels[0].cost
         // нехватка денег не отказ: заказ встаёт в очередь (FIFO), клетка занята
-        const waiting = state.money < cost || state.towers.some((t) => t.phase === 'queued')
+        const waiting = state.money < cost || hasOrders()
         const tower: TowerState = {
           id: state.nextId++,
           type: cmd.towerType,
@@ -178,6 +203,7 @@ export function createBattle(opts: BattleOptions): Battle {
           phaseTicksLeft: 0,
           progress: 0,
           phasePaid: 0,
+          upgradeOrder: null,
         }
         state.towers.push(tower)
         emit({
@@ -199,29 +225,33 @@ export function createBattle(opts: BattleOptions): Battle {
       case 'upgradeTower': {
         const tower = findTower(cmd.towerId)
         if (!tower) return reject(cmd, 'towerNotFound')
-        if (tower.phase === 'upgrading') return reject(cmd, 'alreadyUpgrading')
+        if (tower.phase === 'upgrading' || tower.upgradeOrder !== null)
+          return reject(cmd, 'alreadyUpgrading')
         if (tower.phase !== 'active') return reject(cmd, 'stillBuilding')
         const cost = upgradeCost(tower.type, tower.level)
         if (cost === null) return reject(cmd, 'maxLevel')
-        if (state.money < cost) return reject(cmd, 'notEnoughMoney')
-        const ticks = upgradeTicks(tower.type, tower.level as 1 | 2)
-        tower.phase = 'upgrading'
-        tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
-        tower.progress = 0
-        tower.phasePaid = cost
-        tower.invested += cost
-        emit({
-          type: 'towerUpgradeStarted',
-          towerId: tower.id,
-          toLevel: tower.level + 1,
-          cost,
-          ticks,
-        })
-        return addMoney(-cost)
+        // нехватка денег или непустая очередь — заказ встаёт в общую FIFO
+        if (state.money < cost || hasOrders()) {
+          tower.upgradeOrder = state.nextId++
+          return emit({
+            type: 'towerUpgradeOrdered',
+            towerId: tower.id,
+            toLevel: tower.level + 1,
+            cost,
+            waiting: true,
+          })
+        }
+        return startUpgrade(tower, cost)
       }
       case 'cancelUpgrade': {
         const tower = findTower(cmd.towerId)
         if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.upgradeOrder !== null) {
+          // заказ не оплачен — возврата нет
+          tower.upgradeOrder = null
+          emit({ type: 'towerUpgradeCancelled', towerId: tower.id, refund: 0 })
+          return payQueue()
+        }
         if (tower.phase !== 'upgrading') return reject(cmd, 'notUpgrading')
         const refund = tower.phasePaid
         tower.invested -= refund
@@ -237,6 +267,10 @@ export function createBattle(opts: BattleOptions): Battle {
         if (tower.phase === 'upgrading') return reject(cmd, 'upgradeInProgress')
         // продажа строящейся башни = отмена с возвратом 100%
         if (tower.phase !== 'active') return cancelBuild(cmd, cmd.towerId)
+        if (tower.upgradeOrder !== null) {
+          tower.upgradeOrder = null
+          emit({ type: 'towerUpgradeCancelled', towerId: tower.id, refund: 0 })
+        }
         const refund = sellRefund(tower.invested)
         state.towers = state.towers.filter((t) => t !== tower)
         emit({ type: 'towerSold', towerId: tower.id, refund })

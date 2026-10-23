@@ -40,6 +40,8 @@ export interface TowerState {
   progress: number
   // кредиты, оплаченные за текущую стройку/улучшение (возвращаются при отмене)
   phasePaid: number
+  // номер в общей FIFO-очереди (из state.nextId) у башни с заказанным, но неоплаченным улучшением; иначе null
+  upgradeOrder: number | null
 }
 
 export interface TowerStats {

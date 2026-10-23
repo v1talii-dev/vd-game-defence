@@ -169,12 +169,13 @@ describe('команды', () => {
     expect(state.money).toBe(10_000 - invested)
   })
 
-  it('апгрейд без денег отклоняется', () => {
+  it('апгрейд без денег встаёт в очередь (заказ)', () => {
     const { battle, state, run, of } = setup({ startMoney: 100 })
     run(place(3, 1))
     battle.step(buildTicks('machineGun'))
     run({ type: 'upgradeTower', towerId: state.towers[0]!.id })
-    expect(of('commandRejected').map((e) => e.reason)).toEqual(['notEnoughMoney'])
+    expect(of('commandRejected')).toHaveLength(0)
+    expect(state.towers[0]!.upgradeOrder).not.toBeNull()
     expect(state.money).toBe(0)
   })
 

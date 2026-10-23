@@ -89,6 +89,9 @@ export type BattleEvent =
   // refund 0 для неоплаченного заказа
   | { type: 'towerBuildCancelled'; towerId: number; refund: number }
   | { type: 'towerUpgradeStarted'; towerId: number; toLevel: number; cost: number; ticks: number }
+  // улучшение заказано, но не оплачено (встало в общую очередь); оплата → towerUpgradeStarted
+  | { type: 'towerUpgradeOrdered'; towerId: number; toLevel: number; cost: number; waiting: boolean }
+  // refund 0 для неоплаченного заказа
   | { type: 'towerUpgradeCancelled'; towerId: number; refund: number }
   // улучшение завершено (level — новый уровень)
   | { type: 'towerUpgraded'; towerId: number; level: number; cost: number }
