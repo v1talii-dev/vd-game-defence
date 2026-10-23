@@ -152,8 +152,8 @@ kbd {
 }
 .hint {
   position: absolute;
-  /* под полосой HUD по центру: не задевает меню построек, панель башни и очередь слева */
-  top: calc(var(--safe-top) + var(--hud-h) + var(--pad));
+  /* внизу по центру: под HUD всплывают тосты, слева внизу — меню построек */
+  bottom: calc(var(--safe-bottom) + var(--pad));
   left: 50%;
   translate: -50% 0;
   z-index: 5;

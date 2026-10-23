@@ -60,6 +60,9 @@ export const useBattleSession = defineStore('battleSession', () => {
   const pendingCell = ref<Cell | null>(null)
   const lastRejected = ref<{ reason: RejectReason; at: number } | null>(null)
   const orders = ref<QueueOrder[]>([])
+  // вид панели очереди: только на сессию, в сохранение не попадает
+  const queueCollapsed = ref(false)
+  const queueExpanded = ref(false)
 
   function syncSelected() {
     const t = battle.value?.state.towers.find((x) => x.id === selectedTowerId.value)
@@ -257,6 +260,8 @@ export const useBattleSession = defineStore('battleSession', () => {
     lastRejected,
     queuedOrders,
     orders,
+    queueCollapsed,
+    queueExpanded,
     pendingCell,
     confirmBuild,
     start,
