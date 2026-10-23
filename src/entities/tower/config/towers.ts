@@ -95,4 +95,4 @@ export const RANKS = [
 export const SELL_REFUND_RATIO = 0.7
 
 // окно бесплатной отмены: столько секунд после оплаты возврат 100% даже во время волны
-export const FREE_REFUND_SECONDS = 10
+export const FREE_REFUND_SECONDS = 5
