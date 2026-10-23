@@ -12,6 +12,7 @@ describe('BattleHud', () => {
     const s = useBattleSession()
     s.money = 250
     s.hqHp = 18
+    s.hqMax = 20
     s.waveNumber = 2
     s.waveTotal = 12
     const w = mount(BattleHud)

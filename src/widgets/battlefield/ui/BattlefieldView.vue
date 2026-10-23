@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useBattleSession } from '@/entities/battle'
-import { parseTiledLevel, type LevelData } from '@/entities/level'
+import { getLevel, parseTiledLevel, type LevelConfig, type LevelData } from '@/entities/level'
 import { createLogger, readLocationParams } from '@/shared/lib/debug'
 import { t } from '@/shared/i18n'
 import { UiButton, UiLoading } from '@/shared/ui'
 
-const LEVEL_ID = 'desert-base'
+const props = defineProps<{ levelId: string }>()
 const log = createLogger('render')
 
 const host = ref<HTMLDivElement>()
@@ -22,10 +22,12 @@ let disposed = false
 async function load() {
   failed.value = false
   let level: LevelData
+  let config: LevelConfig
   try {
-    const res = await fetch(`${import.meta.env.BASE_URL}assets/maps/${LEVEL_ID}.tmj`)
+    config = getLevel(props.levelId)
+    const res = await fetch(`${import.meta.env.BASE_URL}${config.tmj}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    level = parseTiledLevel(LEVEL_ID, await res.json())
+    level = parseTiledLevel(config.id, await res.json())
   } catch (e) {
     log.error('не удалось загрузить карту', e)
     failed.value = true
@@ -36,6 +38,7 @@ async function load() {
   session.start({
     seed: params.seed ?? Math.floor(Math.random() * 2 ** 31),
     level,
+    config,
     startMoney: params.money,
     startWave: params.wave,
   })

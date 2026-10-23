@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { openBattle } from './helpers'
 
-const SAVE_KEY = 'vdgd:save:v1'
+const SAVE_KEY = 'vdgd:save:v2'
 // запас тиков на весь бой: 30 Гц × 30 минут игрового времени
 const MAX_TICKS = 30 * 60 * 30
 

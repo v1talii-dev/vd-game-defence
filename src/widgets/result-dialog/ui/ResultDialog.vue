@@ -14,7 +14,7 @@ const router = useRouter()
 watch(
   () => session.outcome,
   (o) => {
-    if (o?.result === 'victory') progress.recordResult('desert-base', o.stars, session.hqHp)
+    if (o?.result === 'victory') progress.recordResult(session.levelId, o.stars, session.hqHp)
   },
   { immediate: true },
 )

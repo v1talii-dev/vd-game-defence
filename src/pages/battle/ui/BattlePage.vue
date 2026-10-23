@@ -11,6 +11,7 @@ import { KeyHelp } from '@/widgets/key-help'
 import { TutorialHints } from '@/widgets/tutorial'
 
 // смена ключа перемонтирует сцену и тем самым перезапускает бой
+const props = defineProps<{ levelId: string }>()
 const helpOpen = ref(false)
 const runKey = ref(0)
 const restart = () => runKey.value++
@@ -18,7 +19,7 @@ const restart = () => runKey.value++
 
 <template>
   <div class="battle">
-    <BattlefieldView :key="runKey" />
+    <BattlefieldView :key="`${props.levelId}:${runKey}`" :level-id="props.levelId" />
     <div class="ui">
       <BattleHud @help="helpOpen = !helpOpen" />
       <BuildMenu />

@@ -45,6 +45,9 @@ export const useBattleSession = defineStore('battleSession', () => {
   const queuedOrders = ref(0)
   const money = ref(0)
   const hqHp = ref(0)
+  // HP штаба на старте уровня (для полосы в HUD)
+  const hqMax = ref(0)
+  const levelId = ref('')
   const waveNumber = ref(0)
   const waveTotal = ref(0)
   const wavePhase = ref<'prep' | 'active'>('prep')
@@ -137,6 +140,8 @@ export const useBattleSession = defineStore('battleSession', () => {
     accumulator = 0
     money.value = b.state.money
     hqHp.value = b.state.hqHp
+    hqMax.value = b.state.hqHp
+    levelId.value = options.level.id
     outcome.value = null
     paused.value = false
     speed.value = 1
@@ -247,6 +252,8 @@ export const useBattleSession = defineStore('battleSession', () => {
     battle,
     money,
     hqHp,
+    hqMax,
+    levelId,
     waveNumber,
     waveTotal,
     wavePhase,

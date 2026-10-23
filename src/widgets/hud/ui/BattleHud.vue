@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { HQ_HP, useBattleSession } from '@/entities/battle'
+import { useBattleSession } from '@/entities/battle'
 import { keyLabel } from '@/shared/config'
 import { t } from '@/shared/i18n'
 import { UiButton, UiIcon } from '@/shared/ui'
@@ -8,7 +8,9 @@ import { UiButton, UiIcon } from '@/shared/ui'
 const emit = defineEmits<{ help: [] }>()
 const session = useBattleSession()
 
-const hpPct = computed(() => Math.max(0, Math.min(100, (session.hqHp / HQ_HP) * 100)))
+const hpPct = computed(() =>
+  Math.max(0, Math.min(100, (session.hqHp / (session.hqMax || 1)) * 100)),
+)
 const bonus = computed(() => session.prepSecondsLeft * (session.waveNumber + 1))
 const canStart = computed(
   () => session.wavePhase === 'prep' && session.waveNumber < session.waveTotal,
@@ -59,7 +61,7 @@ watch(
         data-testid="hud-hp"
       >
         <UiIcon name="shield" :size="18" />
-        <b class="val">{{ session.hqHp }}/{{ HQ_HP }}</b>
+        <b class="val">{{ session.hqHp }}/{{ session.hqMax }}</b>
         <i class="bar"><i :style="{ width: hpPct + '%' }" /></i>
       </div>
     </div>
