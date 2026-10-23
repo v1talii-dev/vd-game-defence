@@ -13,6 +13,7 @@ import {
   type ProjectileState,
 } from '@/entities/projectile/@x/battle'
 import {
+  FREE_REFUND_SECONDS,
   TOWERS,
   rankForXp,
   selectTarget,
@@ -124,6 +125,7 @@ export function createBattle(opts: BattleOptions): Battle {
     tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
     tower.progress = 0
     tower.phasePaid = cost
+    tower.paidTick = state.tick
     tower.invested += cost
     emit({ type: 'towerUpgradeStarted', towerId: tower.id, toLevel: tower.level + 1, cost, ticks })
     addMoney(-cost)
@@ -151,6 +153,7 @@ export function createBattle(opts: BattleOptions): Battle {
       tower.phaseTicksTotal = tower.phaseTicksLeft = ticks
       tower.progress = 0
       tower.phasePaid = tower.invested = cost
+      tower.paidTick = state.tick
       emit({ type: 'towerBuildStarted', towerId: tower.id, cost, ticks })
       addMoney(-cost)
     }
@@ -172,6 +175,13 @@ export function createBattle(opts: BattleOptions): Battle {
         emit({ type: 'towerUpgraded', towerId: tower.id, level: tower.level, cost })
       }
     }
+  }
+
+  // 100% вне волны или в окне FREE_REFUND_SECONDS после оплаты, иначе 70%
+  function currentRefund(tower: TowerState): number {
+    const free =
+      state.wave.phase === 'prep' || state.tick - tower.paidTick <= FREE_REFUND_SECONDS * TICK_RATE
+    return free ? tower.invested : sellRefund(tower.invested)
   }
 
   function apply(cmd: Command) {
@@ -206,6 +216,8 @@ export function createBattle(opts: BattleOptions): Battle {
           progress: 0,
           phasePaid: 0,
           upgradeOrder: null,
+          paidTick: 0,
+          sellRefund: 0,
         }
         state.towers.push(tower)
         emit({
@@ -273,7 +285,7 @@ export function createBattle(opts: BattleOptions): Battle {
           tower.upgradeOrder = null
           emit({ type: 'towerUpgradeCancelled', towerId: tower.id, refund: 0 })
         }
-        const refund = sellRefund(tower.invested)
+        const refund = currentRefund(tower)
         state.towers = state.towers.filter((t) => t !== tower)
         emit({ type: 'towerSold', towerId: tower.id, refund })
         return addMoney(refund)
@@ -468,6 +480,7 @@ export function createBattle(opts: BattleOptions): Battle {
     for (const tower of state.towers) fire(tower)
     moveProjectiles()
     checkWaveCleared()
+    for (const tower of state.towers) tower.sellRefund = currentRefund(tower)
   }
 
   return {

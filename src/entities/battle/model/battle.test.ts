@@ -179,7 +179,7 @@ describe('команды', () => {
     expect(state.money).toBe(0)
   })
 
-  it('продажа возвращает 70% всех вложенных денег', () => {
+  it('продажа в фазе подготовки возвращает 100% всех вложений', () => {
     const { battle, state, run, of } = setup()
     run(place(3, 1, 'rocket'))
     const id = state.towers[0]!.id
@@ -189,10 +189,8 @@ describe('команды', () => {
     const invested = TOWERS.rocket.levels[0].cost + TOWERS.rocket.levels[1].cost
     run({ type: 'sellTower', towerId: id })
     expect(state.towers).toHaveLength(0)
-    expect(of('towerSold')).toEqual([
-      { type: 'towerSold', towerId: id, refund: Math.floor(invested * 0.7) },
-    ])
-    expect(state.money).toBe(START_MONEY - invested + Math.floor(invested * 0.7))
+    expect(of('towerSold')).toEqual([{ type: 'towerSold', towerId: id, refund: invested }])
+    expect(state.money).toBe(START_MONEY)
   })
 
   it('приоритет цели меняется командой', () => {
@@ -222,7 +220,10 @@ describe('команды', () => {
       { type: 'spawnEnemies', enemyType: 'grunt', count: 0 },
     )
     expect(state.enemies).toHaveLength(5)
-    expect(of('commandRejected').map((e) => e.reason)).toEqual(['unknownEnemyType', 'invalidAmount'])
+    expect(of('commandRejected').map((e) => e.reason)).toEqual([
+      'unknownEnemyType',
+      'invalidAmount',
+    ])
   })
 })
 

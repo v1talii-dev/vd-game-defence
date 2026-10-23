@@ -151,11 +151,19 @@ describe('время улучшения', () => {
     const money = state.money
     const n = upgradeTicks('rocket', 1)
     tower.xp = 100
-    run({ type: 'upgradeTower', towerId: tower.id }, { type: 'spawnEnemies', enemyType: 'grunt', count: 1 })
+    run(
+      { type: 'upgradeTower', towerId: tower.id },
+      { type: 'spawnEnemies', enemyType: 'grunt', count: 1 },
+    )
     state.enemies[0]!.distance = 2
     const cost = TOWERS.rocket.levels[1].cost
     expect(state.money).toBe(money - cost)
-    expect(tower).toMatchObject({ phase: 'upgrading', level: 1, phaseTicksTotal: n, phasePaid: cost })
+    expect(tower).toMatchObject({
+      phase: 'upgrading',
+      level: 1,
+      phaseTicksTotal: n,
+      phasePaid: cost,
+    })
     expect(of('towerUpgradeStarted')[0]).toMatchObject({ toLevel: 2, cost, ticks: n })
     battle.step(n - 1)
     expect(tower).toMatchObject({ phase: 'upgrading', level: 1 })
@@ -163,7 +171,9 @@ describe('время улучшения', () => {
     expect(tower.xp).toBe(100)
     battle.step()
     expect(tower).toMatchObject({ phase: 'active', level: 2, xp: 100, rank: 0, progress: 1 })
-    expect(of('towerUpgraded')).toEqual([{ type: 'towerUpgraded', towerId: tower.id, level: 2, cost }])
+    expect(of('towerUpgraded')).toEqual([
+      { type: 'towerUpgraded', towerId: tower.id, level: 2, cost },
+    ])
   })
 
   it('cancelUpgrade возвращает 100% и оставляет уровень; повторные команды отклоняются', () => {
@@ -263,14 +273,14 @@ describe('очередь улучшений', () => {
     expect(state.money).toBe(UP)
   })
 
-  it('продажа с заказом: заказ снимается, возврат 70% вложенного', () => {
+  it('продажа с заказом: заказ снимается, возврат 100% вложенного в подготовке', () => {
     const { state, run, of, tower } = ready()
     run(up(tower))
     run({ type: 'sellTower', towerId: tower.id })
     expect(of('towerUpgradeCancelled')).toHaveLength(1)
     expect(of('towerSold')).toHaveLength(1)
     expect(state.towers).toHaveLength(0)
-    expect(state.money).toBe(Math.floor(MG * 0.7))
+    expect(state.money).toBe(MG)
   })
 
   it('повторный заказ отклоняется', () => {

@@ -42,6 +42,10 @@ export interface TowerState {
   phasePaid: number
   // номер в общей FIFO-очереди (из state.nextId) у башни с заказанным, но неоплаченным улучшением; иначе null
   upgradeOrder: number | null
+  // тик последней оплаты (постройки или улучшения); 0 — не оплачено
+  paidTick: number
+  // сколько вернётся при продаже прямо сейчас (обновляется каждый тик)
+  sellRefund: number
 }
 
 export interface TowerStats {

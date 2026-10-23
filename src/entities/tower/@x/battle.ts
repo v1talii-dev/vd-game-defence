@@ -1,4 +1,10 @@
-export { TOWERS, type TowerType, type DamageType, type TargetPriority } from '../config/towers'
+export {
+  TOWERS,
+  FREE_REFUND_SECONDS,
+  type TowerType,
+  type DamageType,
+  type TargetPriority,
+} from '../config/towers'
 export {
   MAX_TOWER_LEVEL,
   rankForXp,

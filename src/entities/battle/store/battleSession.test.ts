@@ -88,7 +88,7 @@ describe('очередь заказов в сторе боя', () => {
     s.dispatch({ type: 'sellTower', towerId: a.id })
     s.step()
     expect(view(s)).toEqual([
-      [b.id, 'build', 'waiting'],
+      [b.id, 'build', 'working'], // возврат 100% в подготовке оплатил следующий заказ
       [c.id, 'build', 'waiting'],
     ])
   })

@@ -3,6 +3,7 @@ export {
   TOWER_TYPES,
   RANKS,
   SELL_REFUND_RATIO,
+  FREE_REFUND_SECONDS,
   type TowerType,
   type DamageType,
   type TargetPriority,
