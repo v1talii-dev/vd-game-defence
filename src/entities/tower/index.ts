@@ -22,6 +22,8 @@ export {
   towerStats,
   towerMaxHp,
   regenPerTick,
+  repairCost,
+  restoreCost,
   upgradeCost,
   sellRefund,
   buildTicks,

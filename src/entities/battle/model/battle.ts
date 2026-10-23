@@ -16,10 +16,14 @@ import {
   type ProjectileState,
 } from '@/entities/projectile/@x/battle'
 import {
+  AUTO_REPAIR_PER_SEC,
   FREE_REFUND_SECONDS,
+  REPAIR_SECONDS,
   TOWERS,
   rankForXp,
   regenPerTick,
+  repairCost,
+  restoreCost,
   towerMaxHp,
   selectTarget,
   sellRefund,
@@ -117,9 +121,24 @@ export function createBattle(opts: BattleOptions): Battle {
     tower.progress = 1
   }
 
+  // отмена заказа/стройки восстановления: башня остаётся руинами, оплаченное возвращается
+  function cancelRestore(tower: TowerState) {
+    const refund = tower.restoring ? tower.phasePaid : 0
+    tower.invested -= refund
+    tower.restoreOrder = null
+    tower.restoring = false
+    tower.phase = 'ruins'
+    tower.phaseTicksTotal = tower.phaseTicksLeft = tower.phasePaid = 0
+    tower.progress = 0
+    emit({ type: 'towerRestoreCancelled', towerId: tower.id, refund })
+    addMoney(refund)
+    payQueue()
+  }
+
   function cancelBuild(cmd: Command, towerId: number) {
     const tower = findTower(towerId)
     if (!tower) return reject(cmd, 'towerNotFound')
+    if (tower.restoreOrder !== null || tower.restoring) return cancelRestore(tower)
     if (tower.phase !== 'queued' && tower.phase !== 'building') return reject(cmd, 'notBuilding')
     const refund = tower.phasePaid
     state.towers = state.towers.filter((t) => t !== tower)
@@ -129,7 +148,10 @@ export function createBattle(opts: BattleOptions): Battle {
     payQueue()
   }
 
-  const hasOrders = () => state.towers.some((t) => t.phase === 'queued' || t.upgradeOrder !== null)
+  const hasOrders = () =>
+    state.towers.some(
+      (t) => t.phase === 'queued' || t.upgradeOrder !== null || t.restoreOrder !== null,
+    )
 
   function startUpgrade(tower: TowerState, cost: number) {
     const ticks = upgradeTicks(tower.type, tower.level as 1 | 2)
@@ -145,11 +167,33 @@ export function createBattle(opts: BattleOptions): Battle {
 
   // оплата заказов строго по порядку: пока первый не оплачен, следующие ждут
   function payQueue() {
-    // общая FIFO: queued-башни по id и заказы улучшений по upgradeOrder
+    // общая FIFO: queued-башни по id, заказы улучшений и восстановления по своему номеру
+    const key = (t: TowerState) => t.upgradeOrder ?? t.restoreOrder ?? t.id
     const orders = state.towers
-      .filter((t) => t.phase === 'queued' || (t.phase === 'active' && t.upgradeOrder !== null))
-      .sort((a, b) => (a.upgradeOrder ?? a.id) - (b.upgradeOrder ?? b.id))
+      .filter(
+        (t) =>
+          t.phase === 'queued' ||
+          (t.phase === 'active' && t.upgradeOrder !== null) ||
+          (t.phase === 'ruins' && t.restoreOrder !== null),
+      )
+      .sort((a, b) => key(a) - key(b))
     for (const tower of orders) {
+      if (tower.phase === 'ruins') {
+        const cost = restoreCost(tower.invested)
+        if (state.money < cost) return
+        tower.restoreOrder = null
+        tower.restoring = true
+        tower.phase = 'building'
+        tower.phaseTicksTotal = tower.phaseTicksLeft = buildTicks(tower.type)
+        tower.progress = 0
+        tower.phasePaid = cost
+        // вложения растут на цену восстановления: продажа не даёт заработать на руинах
+        tower.invested += cost
+        tower.paidTick = state.tick
+        emit({ type: 'towerBuildStarted', towerId: tower.id, cost, ticks: tower.phaseTicksTotal })
+        addMoney(-cost)
+        continue
+      }
       if (tower.phase === 'active') {
         const upCost = upgradeCost(tower.type, tower.level)
         if (upCost === null) return
@@ -181,7 +225,11 @@ export function createBattle(opts: BattleOptions): Battle {
       const wasBuilding = tower.phase === 'building'
       const cost = tower.phasePaid
       endPhase(tower)
-      if (wasBuilding) emit({ type: 'towerBuilt', towerId: tower.id })
+      if (wasBuilding && tower.restoring) {
+        tower.restoring = false
+        tower.hp = tower.maxHp
+        emit({ type: 'towerRestored', towerId: tower.id })
+      } else if (wasBuilding) emit({ type: 'towerBuilt', towerId: tower.id })
       else {
         tower.level++
         // улучшение полностью лечит
@@ -235,6 +283,13 @@ export function createBattle(opts: BattleOptions): Battle {
           sellRefund: 0,
           hp: towerMaxHp(cmd.towerType, 1, 0),
           maxHp: towerMaxHp(cmd.towerType, 1, 0),
+          restoreOrder: null,
+          restoring: false,
+          repairTicksLeft: 0,
+          repairTicksTotal: 0,
+          repairPerTick: 0,
+          repairProgress: null,
+          repairCost: 0,
         }
         state.towers.push(tower)
         emit({
@@ -296,6 +351,8 @@ export function createBattle(opts: BattleOptions): Battle {
         const tower = findTower(cmd.towerId)
         if (!tower) return reject(cmd, 'towerNotFound')
         if (tower.phase === 'upgrading') return reject(cmd, 'upgradeInProgress')
+        // руины не продаются — есть clearRuins
+        if (tower.phase === 'ruins') return reject(cmd, 'notBuilding')
         // продажа строящейся башни = отмена с возвратом 100%
         if (tower.phase !== 'active') return cancelBuild(cmd, cmd.towerId)
         if (tower.upgradeOrder !== null) {
@@ -306,6 +363,45 @@ export function createBattle(opts: BattleOptions): Battle {
         state.towers = state.towers.filter((t) => t !== tower)
         emit({ type: 'towerSold', towerId: tower.id, refund })
         return addMoney(refund)
+      }
+      case 'repairTower': {
+        const tower = findTower(cmd.towerId)
+        if (!tower) return reject(cmd, 'towerNotFound')
+        if (!targetable(tower)) return reject(cmd, 'notRepairable')
+        if (tower.repairTicksLeft > 0) return reject(cmd, 'alreadyRepairing')
+        const cost = repairCost(tower.invested, tower.hp, tower.maxHp)
+        if (cost === 0) return reject(cmd, 'fullHp')
+        // без очереди: нет денег — отказ
+        if (state.money < cost) return reject(cmd, 'notEnoughMoney')
+        const ticks = REPAIR_SECONDS * TICK_RATE
+        tower.repairTicksTotal = tower.repairTicksLeft = ticks
+        tower.repairPerTick = (tower.maxHp - tower.hp) / ticks
+        emit({ type: 'towerRepairStarted', towerId: tower.id, cost, ticks })
+        return addMoney(-cost)
+      }
+      case 'restoreTower': {
+        const tower = findTower(cmd.towerId)
+        if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.phase !== 'ruins') return reject(cmd, 'notRuins')
+        if (tower.restoreOrder !== null) return reject(cmd, 'alreadyRestoring')
+        const cost = restoreCost(tower.invested)
+        emit({
+          type: 'towerRestoreOrdered',
+          towerId: tower.id,
+          cost,
+          waiting: state.money < cost || hasOrders(),
+        })
+        tower.restoreOrder = state.nextId++
+        return payQueue()
+      }
+      case 'clearRuins': {
+        const tower = findTower(cmd.towerId)
+        if (!tower) return reject(cmd, 'towerNotFound')
+        if (tower.phase !== 'ruins') return reject(cmd, 'notRuins')
+        state.towers = state.towers.filter((t) => t !== tower)
+        emit({ type: 'ruinsCleared', towerId: tower.id, cell: { ...tower.cell } })
+        // снятый заказ восстановления мог освободить очередь
+        return payQueue()
       }
       case 'startWave': {
         if (state.wave.phase === 'active') return reject(cmd, 'waveInProgress')
@@ -524,6 +620,8 @@ export function createBattle(opts: BattleOptions): Battle {
     }
     endPhase(tower)
     tower.phase = 'ruins'
+    // остаток ремонта сгорает без возврата
+    tower.repairTicksLeft = tower.repairTicksTotal = tower.repairPerTick = 0
     tower.cooldown = 0
     tower.targetId = null
     emit({ type: 'towerDestroyed', towerId: tower.id, x: tower.x, y: tower.y })
@@ -533,8 +631,15 @@ export function createBattle(opts: BattleOptions): Battle {
 
   function regenTowers() {
     for (const t of state.towers) {
-      if (!targetable(t) || t.hp >= t.maxHp) continue
-      t.hp = Math.min(t.maxHp, t.hp + regenPerTick(t.rank, t.maxHp))
+      if (!targetable(t)) continue
+      let heal = regenPerTick(t.rank, t.maxHp)
+      // авторемонт вне волны (то же условие, что у бесплатной отмены)
+      if (state.wave.phase === 'prep') heal += (t.maxHp * AUTO_REPAIR_PER_SEC) / TICK_RATE
+      if (t.repairTicksLeft > 0) {
+        heal += t.repairPerTick
+        if (--t.repairTicksLeft === 0) emit({ type: 'towerRepaired', towerId: t.id })
+      }
+      t.hp = Math.min(t.maxHp, t.hp + heal)
     }
   }
 
@@ -594,8 +699,15 @@ export function createBattle(opts: BattleOptions): Battle {
     moveProjectiles()
     regenTowers()
     checkWaveCleared()
-    for (const tower of state.towers)
+    for (const tower of state.towers) {
       tower.sellRefund = tower.phase === 'ruins' ? 0 : currentRefund(tower)
+      tower.repairProgress =
+        tower.repairTicksLeft > 0 ? 1 - tower.repairTicksLeft / tower.repairTicksTotal : null
+      tower.repairCost =
+        targetable(tower) && tower.repairTicksLeft === 0
+          ? repairCost(tower.invested, tower.hp, tower.maxHp)
+          : 0
+    }
   }
 
   return {

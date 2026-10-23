@@ -39,6 +39,9 @@ function setup(towers: readonly [TowerType, number, number][]) {
   for (const [type, x, y] of towers)
     battle.dispatch({ type: 'placeTower', towerType: type, cell: { x, y } })
   battle.step(buildTicks('rocket') + 2)
+  // идёт волна: вне волны башни бесплатно лечатся (авторемонт)
+  battle.dispatch({ type: 'startWave' })
+  battle.step()
   const of = <T extends BattleEvent['type']>(t: T) =>
     events.filter((e): e is BattleEventOf<T> => e.type === t)
   // враг не умирает от башен: нужен только обстрел

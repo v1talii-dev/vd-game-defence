@@ -1,6 +1,8 @@
 import { TICK_RATE } from '@/shared/config'
 import {
   RANKS,
+  REPAIR_COST_RATIO,
+  RESTORE_COST_RATIO,
   SELL_REFUND_RATIO,
   TOWERS,
   type TargetPriority,
@@ -50,6 +52,17 @@ export interface TowerState {
   hp: number
   // зависит от уровня и ранга
   maxHp: number
+  // номер в общей FIFO-очереди у руин с заказанным, но неоплаченным восстановлением; иначе null
+  restoreOrder: number | null
+  // true, пока идёт стройка восстановления руин (phase 'building'); отмена возвращает в ruins
+  restoring: boolean
+  // ручной ремонт: осталось и всего тиков, HP за тик (0 — не чинится)
+  repairTicksLeft: number
+  repairTicksTotal: number
+  repairPerTick: number
+  // снимок для UI: ход ремонта 0..1 или null; цена ремонта сейчас (0 — чинить нельзя)
+  repairProgress: number | null
+  repairCost: number
 }
 
 export interface TowerStats {
@@ -85,6 +98,17 @@ export function towerMaxHp(type: TowerType, level: number, rank: number): number
 // самолечение за тик: доля максимума HP ранга
 export function regenPerTick(rank: number, maxHp: number): number {
   return (maxHp * (RANKS[rank] ?? RANKS[0]).regenPerSec) / TICK_RATE
+}
+
+// цена ремонта: доля вложений × доля недостающего HP, вверх, минимум 1; 0 — чинить нечего
+export function repairCost(invested: number, hp: number, maxHp: number): number {
+  // допуск на накопленную ошибку float после ремонта
+  if (maxHp - hp < 1e-6) return 0
+  return Math.max(1, Math.ceil((REPAIR_COST_RATIO * invested * (maxHp - hp)) / maxHp))
+}
+
+export function restoreCost(invested: number): number {
+  return Math.ceil(RESTORE_COST_RATIO * invested)
 }
 
 // цена следующего уровня или null, если уровень максимальный

@@ -19,6 +19,12 @@ export type Command =
   // досрочный вызов: бонус = оставшиеся секунды паузы (вниз) × номер вызываемой волны
   | { type: 'startWave' }
   | { type: 'setTargetPriority'; towerId: number; priority: TargetPriority }
+  // ручной ремонт: цена списывается сразу, в очередь не ставится
+  | { type: 'repairTower'; towerId: number }
+  // восстановление руин: заказ в общей FIFO-очереди, ранг сохраняется
+  | { type: 'restoreTower'; towerId: number }
+  // убрать руины бесплатно: клетка свободна, ранг теряется
+  | { type: 'clearRuins'; towerId: number }
   // для debug/e2e
   | { type: 'grantMoney'; amount: number }
   // debug/стресс-сцена: count врагов подряд вдоль пути с шагом spacing клеток (по умолчанию 0.5)
@@ -38,6 +44,13 @@ export type RejectReason =
   | 'notBuilding'
   | 'stillBuilding'
   | 'upgradeInProgress'
+  // ремонт: HP полное / башня строится или в руинах / ремонт уже идёт
+  | 'fullHp'
+  | 'notRepairable'
+  | 'alreadyRepairing'
+  // restoreTower/clearRuins не для руин; восстановление уже заказано
+  | 'notRuins'
+  | 'alreadyRestoring'
   | 'waveInProgress'
   | 'noMoreWaves'
   | 'invalidAmount'
@@ -116,6 +129,18 @@ export type BattleEvent =
   | { type: 'towerDamaged'; towerId: number; amount: number; hp: number; attackerId: number }
   // HP = 0: башня стала руинами (ранг и опыт сохранены)
   | { type: 'towerDestroyed'; towerId: number; x: number; y: number }
+  // ремонт оплачен (cost списан) и начался; ticks — длительность
+  | { type: 'towerRepairStarted'; towerId: number; cost: number; ticks: number }
+  // ремонт завершён (не приходит, если башню добили)
+  | { type: 'towerRepaired'; towerId: number }
+  // восстановление заказано; waiting — ждёт оплаты в общей очереди (дальше towerBuildStarted с флагом restoring в снимке)
+  | { type: 'towerRestoreOrdered'; towerId: number; cost: number; waiting: boolean }
+  // отмена заказа/стройки восстановления: башня остаётся руинами; refund 0 у неоплаченного
+  | { type: 'towerRestoreCancelled'; towerId: number; refund: number }
+  // руины восстановлены: башня active с полным HP и прежним рангом
+  | { type: 'towerRestored'; towerId: number }
+  // руины убраны, клетка свободна
+  | { type: 'ruinsCleared'; towerId: number; cell: Cell }
   | {
       type: 'projectileImpact'
       x: number

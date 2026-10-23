@@ -1,4 +1,4 @@
-import { TOWERS, TOWER_TYPES, upgradeCost, type TowerType } from '@/entities/tower'
+import { TOWERS, TOWER_TYPES, restoreCost, upgradeCost, type TowerType } from '@/entities/tower'
 import { nextRandom, seedRng } from '@/shared/lib/sim'
 import { createBattle, type Battle } from '@/entities/battle'
 import type { LevelConfig, LevelData } from '@/entities/level'
@@ -14,6 +14,19 @@ export type BotAction =
   // апгрейд башни, поставленной на клетке
   | { upgrade: [number, number] }
 
+// ремонт и восстановление: чинит башни со здоровьем ниже 70%, восстанавливает руины, когда хватает денег
+function maintain(battle: Battle) {
+  const s = battle.state
+  for (const t of s.towers) {
+    if (t.phase === 'ruins') {
+      if (t.restoreOrder === null && s.money >= restoreCost(t.invested))
+        battle.dispatch({ type: 'restoreTower', towerId: t.id })
+    } else if (t.repairCost > 0 && t.hp < t.maxHp * 0.7 && s.money >= t.repairCost) {
+      battle.dispatch({ type: 'repairTower', towerId: t.id })
+    }
+  }
+}
+
 // скриптовый бот: выполняет действия по порядку, как только хватает денег
 export function runBot(
   lv: LevelCtx,
@@ -27,6 +40,7 @@ export function runBot(
   let pending = false
   battle.on('commandApplied', () => (pending = false))
   while (!battle.state.outcome && battle.state.tick < 30 * 60 * 30) {
+    if (battle.state.tick % 10 === 0) maintain(battle)
     const action = actions[next]
     if (action && !pending) {
       const s = battle.state
@@ -109,6 +123,7 @@ export function runRandomBot(lv: LevelCtx, seed: number): Battle {
   let pending = false
   battle.on('commandApplied', () => (pending = false))
   while (!battle.state.outcome && battle.state.tick < 30 * 60 * 30) {
+    if (battle.state.tick % 10 === 0) maintain(battle)
     // решение три раза в секунду
     if (!pending && battle.state.tick % 10 === 0) {
       const s = battle.state
