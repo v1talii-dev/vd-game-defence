@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useBattleSession } from '@/entities/battle'
 import { TOWERS, TOWER_TYPES, type TowerType } from '@/entities/tower'
 import { t } from '@/shared/i18n'
 import { UiIcon } from '@/shared/ui'
 
 const session = useBattleSession()
+// только башни уровня, в порядке конфига башен
+const towers = computed(() => TOWER_TYPES.filter((x) => session.allowedTowers.includes(x)))
 const cost = (type: TowerType) => TOWERS[type].levels[0].cost
 
 function toggle(type: TowerType) {
@@ -24,7 +27,7 @@ const label = (type: TowerType, i: number) =>
 <template>
   <nav class="build-menu" :aria-label="t.build.title">
     <button
-      v-for="(type, i) in TOWER_TYPES"
+      v-for="(type, i) in towers"
       :key="type"
       class="tower"
       :class="{ active: session.buildType === type, poor: session.money < cost(type) }"

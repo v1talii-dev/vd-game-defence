@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBattleSession } from '@/entities/battle'
+import { LEVELS } from '@/entities/level'
 import { useProgressStore } from '@/entities/progress'
 import { t } from '@/shared/i18n'
 import { UiButton, UiIcon, UiPanel } from '@/shared/ui'
@@ -10,6 +11,13 @@ const emit = defineEmits<{ restart: [] }>()
 const session = useBattleSession()
 const progress = useProgressStore()
 const router = useRouter()
+
+// следующий реализованный и открытый уровень кампании
+const next = computed(() => {
+  const i = LEVELS.findIndex((l) => l.id === session.levelId)
+  const l = LEVELS[i + 1]
+  return l?.implemented && progress.isUnlocked(l.id) ? l : null
+})
 
 watch(
   () => session.outcome,
@@ -46,11 +54,22 @@ watch(
         />
       </div>
       <div class="actions">
-        <UiButton data-testid="result-restart" @click="emit('restart')">
+        <UiButton
+          v-if="next && session.outcome.result === 'victory'"
+          data-testid="result-next"
+          @click="router.push(`/battle/${next.id}`)"
+        >
+          {{ t.result.next }}
+        </UiButton>
+        <UiButton
+          :variant="next && session.outcome.result === 'victory' ? 'secondary' : 'primary'"
+          data-testid="result-restart"
+          @click="emit('restart')"
+        >
           {{ t.result.restart }}
         </UiButton>
-        <UiButton variant="secondary" data-testid="result-menu" @click="router.push('/')">
-          {{ t.result.toMenu }}
+        <UiButton variant="secondary" data-testid="result-levels" @click="router.push('/campaign')">
+          {{ t.result.toLevels }}
         </UiButton>
       </div>
     </UiPanel>
@@ -102,10 +121,8 @@ h2 {
 }
 .actions {
   display: flex;
+  flex-direction: column;
   gap: var(--gap);
   margin-top: 14px;
-}
-.actions > * {
-  flex: 1;
 }
 </style>

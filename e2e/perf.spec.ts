@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { openBattle } from './helpers'
+import { openBattle, playFromMenu } from './helpers'
 
 // Замер перф-целей SPEC §6.6 (десктоп). Зависит от железа, поэтому вне обычного прогона:
 // PERF=1 npx playwright test e2e/perf.spec.ts --headed
@@ -50,7 +50,7 @@ test('время до интерактива < 3 с', async ({ page }) => {
   await page.goto('./')
   await page.getByRole('link', { name: 'Играть' }).waitFor()
   const menuMs = Date.now() - t0
-  await page.getByRole('link', { name: 'Играть' }).click()
+  await playFromMenu(page)
   await page.waitForFunction(() => window.__game?.ready)
   const battleMs = Date.now() - t0
   console.log('PERF', JSON.stringify({ menuMs, battleMs }))
@@ -69,7 +69,7 @@ test('память после 3 рестартов боя — рост ≤ 10%, 
   }
   const restart = async () => {
     await page.evaluate(() => (location.hash = '#/'))
-    await page.getByRole('link', { name: 'Играть' }).click()
+    await playFromMenu(page)
     await page.waitForFunction(() => window.__game?.ready)
     await page.waitForTimeout(1000)
   }

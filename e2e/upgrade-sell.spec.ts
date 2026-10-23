@@ -38,8 +38,8 @@ test('улучшение и продажа через панель башни', 
     return { money: s.money, towers: s.towers.length }
   })
   expect(final.towers).toBe(0)
-  // возврат 70% вложенного (SPEC), округление вниз
-  expect(final.money - afterUpgrade.money).toBe(Math.floor(afterUpgrade.invested * 0.7))
+  // продажа до первой волны — 100% вложений (бесплатная отмена, SPEC §4.3)
+  expect(final.money - afterUpgrade.money).toBe(afterUpgrade.invested)
 })
 
 test('отмена улучшения возвращает деньги', async ({ page, isMobile }) => {

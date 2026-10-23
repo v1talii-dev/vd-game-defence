@@ -72,6 +72,13 @@ export async function openBattle(page: Page, query = ''): Promise<void> {
   await page.locator('[data-testid="battlefield"] canvas').waitFor()
 }
 
+/** Путь игрока: меню → «Играть» (кампания) → карточка уровня → «В бой» */
+export async function playFromMenu(page: Page, levelId = 'desert-base'): Promise<void> {
+  await page.getByRole('link', { name: 'Играть' }).click()
+  await page.getByTestId(`level-card-${levelId}`).click()
+  await page.getByTestId('level-start').click()
+}
+
 /** Свободная клетка, где строить можно (без башен), с отступом от начала списка */
 export function pickBuildable(page: Page, index = 0): Promise<Cell> {
   return page.evaluate((i) => {

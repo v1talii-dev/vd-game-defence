@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { LEVELS } from '@/entities/level'
 import { useProgressStore } from '@/entities/progress'
 import { t } from '@/shared/i18n'
 import { UiButton, UiIcon } from '@/shared/ui'
 
 const progress = useProgressStore()
-const stars = progress.levels['desert-base']?.stars ?? 0
+const stars = Object.values(progress.levels).reduce((s, l) => s + (l?.stars ?? 0), 0)
+const maxStars = LEVELS.filter((l) => l.implemented).length * 3
 // предупреждение показываем один раз за сессию, пока пользователь не закроет
 const warn = ref(!progress.storageAvailable)
 </script>
@@ -18,19 +20,20 @@ const warn = ref(!progress.storageAvailable)
       <h1>{{ t.title }}</h1>
       <p class="tagline">{{ t.menu.tagline }}</p>
       <div class="best">
-        <div class="stars" role="img" :aria-label="t.menu.starsLabel.replace('{n}', String(stars))">
-          <UiIcon
-            v-for="i in 3"
-            :key="i"
-            :name="i <= stars ? 'star' : 'star-empty'"
-            :size="28"
-            :class="{ on: i <= stars }"
-          />
+        <div
+          class="stars"
+          role="img"
+          :aria-label="
+            t.menu.starsLabel.replace('{n}', String(stars)).replace('{max}', String(maxStars))
+          "
+        >
+          <UiIcon name="star" :size="28" :class="{ on: stars > 0 }" />
+          <b data-testid="menu-stars">{{ stars }} / {{ maxStars }}</b>
         </div>
         <span>{{ t.menu.bestResult }}</span>
       </div>
       <nav class="actions">
-        <UiButton to="/battle" size="lg">{{ t.menu.play }}</UiButton>
+        <UiButton to="/campaign" size="lg">{{ t.menu.play }}</UiButton>
         <UiButton to="/settings" variant="secondary" size="lg">{{ t.menu.settings }}</UiButton>
       </nav>
     </section>
@@ -113,8 +116,13 @@ h1 {
 }
 .stars {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
   color: var(--c-steel-600);
+}
+.stars b {
+  color: var(--c-text);
 }
 .stars .on {
   color: var(--c-accent);

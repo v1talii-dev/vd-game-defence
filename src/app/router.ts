@@ -1,5 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { getLevel } from '@/entities/level'
+import { useProgressStore } from '@/entities/progress'
+import { CampaignPage } from '@/pages/campaign'
 import { MainMenuPage } from '@/pages/main-menu'
 
 export const router = createRouter({
@@ -13,16 +15,21 @@ export const router = createRouter({
       name: 'battle',
       component: () => import('@/pages/battle'),
       props: true,
-      // неизвестный уровень — в меню (экран кампании появится в C4; закрытые уровни — там же)
-      beforeEnter: (to) => {
-        try {
-          getLevel(String(to.params.levelId))
-          return true
-        } catch {
-          return '/'
-        }
-      },
     },
+    { path: '/campaign', name: 'campaign', component: CampaignPage },
     { path: '/settings', name: 'settings', component: () => import('@/pages/settings') },
   ],
+})
+
+// неизвестный, закрытый или нереализованный уровень — на экран кампании с сообщением;
+// beforeEach, а не beforeEnter: тот не срабатывает при смене только :levelId
+router.beforeEach((to) => {
+  if (to.name !== 'battle') return true
+  try {
+    const level = getLevel(String(to.params.levelId))
+    if (level.implemented && useProgressStore().isUnlocked(level.id)) return true
+  } catch {
+    // неизвестный id — ниже редирект
+  }
+  return { path: '/campaign', query: { locked: '1' } }
 })

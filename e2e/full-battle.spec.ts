@@ -60,11 +60,13 @@ test('полный бой: победа → экран результата → 
     }, SAVE_KEY)
   expect(await saved()).toBe(stars)
 
-  // в меню и после перезагрузки звёзды на месте
-  await page.getByTestId('result-menu').click()
-  const starsLabel = `Звёзд: ${stars} из 3`
-  await expect(page.getByRole('img', { name: starsLabel })).toBeVisible()
+  // на экране кампании и после перезагрузки звёзды на месте
+  await page.getByTestId('result-levels').click()
+  const card = page.getByTestId('level-card-desert-base')
+  await expect(card.getByRole('img', { name: `Звёзд: ${stars} из 3` })).toBeVisible()
+  // победа открыла уровень 2: он «Скоро» (заглушка), а не замок
+  await expect(page.getByTestId('level-card-stub-2')).toContainText('Скоро')
   await page.reload()
-  await expect(page.getByRole('img', { name: starsLabel })).toBeVisible()
+  await expect(card.getByRole('img', { name: `Звёзд: ${stars} из 3` })).toBeVisible()
   expect(await saved()).toBe(stars)
 })

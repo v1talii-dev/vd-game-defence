@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { markRaw, ref, shallowRef } from 'vue'
 import { TICK_RATE } from '@/shared/config'
 import type { LevelData } from '@/entities/level'
-import { TOWERS, upgradeCost, type TowerState, type TowerType } from '@/entities/tower'
+import { TOWERS, TOWER_TYPES, upgradeCost, type TowerState, type TowerType } from '@/entities/tower'
 import { createBattle } from '../model/battle'
 import { recordCommands, type Replay } from '../model/replay'
 import type {
@@ -48,6 +48,8 @@ export const useBattleSession = defineStore('battleSession', () => {
   // HP штаба на старте уровня (для полосы в HUD)
   const hqMax = ref(0)
   const levelId = ref('')
+  // башни, доступные на уровне (меню построек); без config — все
+  const allowedTowers = ref<readonly TowerType[]>([])
   const waveNumber = ref(0)
   const waveTotal = ref(0)
   const wavePhase = ref<'prep' | 'active'>('prep')
@@ -142,6 +144,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     hqHp.value = b.state.hqHp
     hqMax.value = b.state.hqHp
     levelId.value = options.level.id
+    allowedTowers.value = options.config?.allowedTowers ?? TOWER_TYPES
     outcome.value = null
     paused.value = false
     speed.value = 1
@@ -254,6 +257,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     hqHp,
     hqMax,
     levelId,
+    allowedTowers,
     waveNumber,
     waveTotal,
     wavePhase,
