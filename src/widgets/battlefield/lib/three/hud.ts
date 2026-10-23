@@ -1,4 +1,4 @@
-// HUD-объекты в мире: HP-бары над врагами, шевроны рангов, кольцо дальности (SPEC §3.5)
+// HUD-объекты в мире: HP-бары над врагами, шевроны рангов, кольцо дальности, кольцо прогресса (SPEC §3.5)
 import {
   Color,
   DoubleSide,
@@ -23,12 +23,8 @@ type Disposables = { dispose(): void }[]
 const CAP = 256
 const PROG_CAP = 128
 const BAR_W = 0.6
-/** Рамка индикатора на кромке плато (SPEC §3.5): квад 1 клетка, плато 0.94; границы по Чебышёву в долях полуразмера */
-const FRAME_SIZE = 1.14 // полоса чуть снаружи кромки плато: модели шире плато её не закрывают
-const BAND_IN = 0.8 // цветная полоса ≈0.08 клетки
-const BAND_OUT = 0.94
-const UNDER_IN = 0.75 // тёмная подложка шире полосы
-const UNDER_OUT = 0.97
+/** Диаметр кольца прогресса в клетках */
+const PROG_SIZE = 0.68
 const FULL = new Color(0x6fbf3a)
 const LOW = new Color(0xd23b22)
 const _m = new Matrix4()
@@ -36,7 +32,6 @@ const _p = new Vector3()
 const _s = new Vector3()
 const _right = new Vector3()
 const _c = new Color()
-const _fwd = new Vector3()
 
 export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: Disposables) {
   const make = (geo: PlaneGeometry | ShapeGeometry, color: number, order: number) => {
@@ -74,24 +69,22 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
   scene.add(ring)
   disposables.push(ringGeo, ringMat)
 
-  // рамка прогресса по кромке плато-подставки: плоский квад на башню, положение вдоль периметра считается в шейдере
-  const pGeo = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
+  // кольцо прогресса-билборд над башней: заливка по часовой от верха
+  const pGeo = new PlaneGeometry(1, 1)
   const pData = new InstancedBufferAttribute(new Float32Array(PROG_CAP * 4), 4) // progress, r, g, b
   pData.setUsage(DynamicDrawUsage)
   pGeo.setAttribute('aData', pData)
   const pMat = new ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uStart: { value: 0 } },
+    uniforms: { uTime: { value: 0 } },
     transparent: true,
+    depthTest: false,
     depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
     vertexShader: `
       attribute vec4 aData;
       varying vec2 vUv;
       varying vec4 vData;
       void main() {
-        vUv = position.xz * 2.0;
+        vUv = position.xy * 2.0;
         vData = aData;
         gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
       }`,
@@ -99,37 +92,36 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
       varying vec2 vUv;
       varying vec4 vData;
       uniform float uTime;
-      uniform float uStart;
       void main() {
         vec2 q = vUv;
-        float c = max(abs(q.x), abs(q.y));
-        float e = fwidth(c);
-        float under = smoothstep(${UNDER_IN}, ${UNDER_IN} + e, c) * (1.0 - smoothstep(${UNDER_OUT} - e, ${UNDER_OUT}, c));
-        if (under <= 0.0) discard;
-        float band = smoothstep(${BAND_IN}, ${BAND_IN} + e, c) * (1.0 - smoothstep(${BAND_OUT} - e, ${BAND_OUT}, c));
-        // поворот: старт (u = 0) в ближнем к камере углу; обход по часовой
-        for (int i = 0; i < 4; i++) if (float(i) < uStart) q = vec2(q.y, -q.x);
-        float u;
-        if (c + q.y < 1e-5) u = (q.x / c + 1.0) * 0.5;
-        else if (c - q.x < 1e-5) u = 1.0 + (q.y / c + 1.0) * 0.5;
-        else if (c - q.y < 1e-5) u = 2.0 + (1.0 - q.x / c) * 0.5;
-        else u = 3.0 + (1.0 - q.y / c) * 0.5;
-        u *= 0.25;
+        float r = length(q);
+        float e = fwidth(r) * 1.2;
+        float disc = 1.0 - smoothstep(0.98 - e, 0.98, r);
+        if (disc <= 0.0) discard;
+        float band = smoothstep(0.46, 0.46 + e, r);
+        float a = atan(q.x, q.y);
+        float u = (a < 0.0 ? a + 6.2831853 : a) / 6.2831853;
         vec3 col;
         if (vData.x < 0.0) {
-          float d = mod(u - uTime * 0.12, 1.0);
-          col = d < 0.16 ? vec3(1.0, 0.95, 0.75) : vData.yzw * 0.85;
+          float d = mod(u - uTime * 0.5, 1.0);
+          col = d < 0.25 ? vec3(1.0, 0.95, 0.75) : vData.yzw * 0.55;
         } else {
-          col = u <= vData.x ? vData.yzw : vec3(0.42, 0.39, 0.32);
+          col = u <= vData.x ? vData.yzw : vec3(0.1, 0.09, 0.08);
         }
-        col = mix(vec3(0.05, 0.04, 0.03), col, band);
-        gl_FragColor = vec4(col, under * mix(0.85, 1.0, band));
+        // тонкая белая обводка по краю; внутри незаполненная часть и центр — лёгкая тёмная заливка
+        float edge = smoothstep(0.89, 0.89 + e, r);
+        float alpha = mix(0.4, 1.0, band);
+        if (u > vData.x && vData.x >= 0.0) alpha = mix(0.4, 0.55, band);
+        col = mix(col, vec3(1.0), edge);
+        alpha = mix(alpha, 1.0, edge);
+        if (r < 0.46) col = vec3(0.05, 0.04, 0.03);
+        gl_FragColor = vec4(col, alpha * disc);
       }`,
   })
   const prog = new InstancedMesh(pGeo, pMat, PROG_CAP)
   prog.count = 0
   prog.frustumCulled = false
-  prog.renderOrder = 13
+  prog.renderOrder = 20
   scene.add(prog)
   disposables.push(pGeo, pMat, prog)
 
@@ -149,33 +141,27 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
     mesh.setMatrixAt(i, _m)
   }
 
-  const putFlat = (i: number, x: number, y: number, z: number) => {
-    _m.makeScale(FRAME_SIZE, 1, FRAME_SIZE).setPosition(x, y, z)
-    prog.setMatrixAt(i, _m)
+  const putProg = (x: number, y: number, z: number, progress: number, color: number) => {
+    put(prog, nProg, x, y, z, PROG_SIZE, PROG_SIZE)
+    writeProgress(pData.array as Float32Array, nProg, progress, color)
+    nProg++
   }
 
   return {
     begin() {
       nBar = nChev = nProg = 0
-      // старт рамки — в ближнем к камере углу
-      camera.getWorldDirection(_fwd)
-      pMat.uniforms.uStart!.value = _fwd.x < 0 ? (_fwd.z < 0 ? 2 : 1) : _fwd.z < 0 ? 3 : 0
     },
-    /** рамка «ждёт кредитов»: тусклая, по ней бежит светлый сегмент; (wx, wy, wz) — центр плато, wy — чуть выше его верха; t — секунды */
+    /** кольцо «ждёт кредитов»: тусклое, по нему бежит светлый сегмент, без цифры; (wx, wy, wz) — центр кольца; t — секунды */
     waiting(wx: number, wy: number, wz: number, t: number) {
       if (nProg >= PROG_CAP) return
-      putFlat(nProg, wx, wy, wz)
-      writeProgress(pData.array as Float32Array, nProg, 0, WAIT_COLOR)
-      ;(pData.array as Float32Array)[nProg * 4] = -1 // признак режима «ожидание»
+      putProg(wx, wy, wz, 0, WAIT_COLOR)
+      ;(pData.array as Float32Array)[(nProg - 1) * 4] = -1 // признак режима «ожидание»
       pMat.uniforms.uTime!.value = t
-      nProg++
     },
-    /** рамка прогресса по кромке плато, заливка по часовой от ближнего угла; progress 0..1, color — 0xRRGGBB */
+    /** кольцо прогресса, заливка по часовой от верха; progress 0..1, color — 0xRRGGBB */
     progress(wx: number, wy: number, wz: number, progress: number, color: number) {
       if (nProg >= PROG_CAP) return
-      putFlat(nProg, wx, wy, wz)
-      writeProgress(pData.array as Float32Array, nProg, progress, color)
-      nProg++
+      putProg(wx, wy, wz, progress, color)
     },
     /** бар над точкой (мировые координаты), ratio = hp / maxHp */
     bar(wx: number, wy: number, wz: number, ratio: number, color?: Color, k = 1) {
