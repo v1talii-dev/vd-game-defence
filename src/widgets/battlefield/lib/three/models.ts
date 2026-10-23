@@ -118,8 +118,20 @@ export function createModels(scene: Scene, disposables: Disposables) {
     rocket: [
       { geo: g(new CylinderGeometry(0.4, 0.46, 0.2, 6)), color: 0x8a4a3a, pos: [0, 0.1, 0] },
       { geo: box(0.55, 0.26, 0.4), color: 0xb35d44, pos: [0, 0.33, 0], head: true },
-      { geo: tubeGeo, color: 0xd9a441, pos: [-0.17, 0.5, 0.2], rot: [Math.PI / 2, 0, 0], head: true },
-      { geo: tubeGeo, color: 0xd9a441, pos: [0.17, 0.5, 0.2], rot: [Math.PI / 2, 0, 0], head: true },
+      {
+        geo: tubeGeo,
+        color: 0xd9a441,
+        pos: [-0.17, 0.5, 0.2],
+        rot: [Math.PI / 2, 0, 0],
+        head: true,
+      },
+      {
+        geo: tubeGeo,
+        color: 0xd9a441,
+        pos: [0.17, 0.5, 0.2],
+        rot: [Math.PI / 2, 0, 0],
+        head: true,
+      },
     ],
   }
   const towers = {
@@ -198,7 +210,11 @@ export function createModels(scene: Scene, disposables: Disposables) {
       ENEMY_CAP,
     ),
   }
-  const all: Model[] = [...Object.values(towers), ...Object.values(ghosts), ...Object.values(enemies)]
+  const all: Model[] = [
+    ...Object.values(towers),
+    ...Object.values(ghosts),
+    ...Object.values(enemies),
+  ]
 
   /** Подмена примитивов моделями из GLB: те же Model, части корпус/голова заменяются на месте. */
   const applyGlb = (
