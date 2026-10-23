@@ -25,7 +25,7 @@
   Проверка: unit-тест (границы дороги ⊂ [0,width]×[0,height], концы лежат на краях); скриншот входа и штаба сверху.
 - [x] **P5. Ходьба пехоты.** (`render-engineer`; Blender-скрипты — `render-engineer`, как M7) Решение по R4. Предложение: в `tools/models/pehota/enemy_grunt.py` и `enemy_grenadier.py` вынести ноги в узлы `legL`/`legR` с точкой вращения в бедре (как `set_pivot` у головы), пересобрать GLB; в `modelConfig.ts` добавить `LEG_NODES`, в `models.ts` — угол качания ног как отдельная матрица части (по аналогии с `part.head`); фаза в `three3d.ts` из пройденного пути врага (накопление длины шага в записи `enemies`), на месте ноги стоят. Лимиты полигонов `tools/models/pehota/verify.py` соблюсти.
   Проверка: скриншоты/серия кадров с разными фазами; ноги видимо двигаются в движении и стоят на паузе; draw calls не растут; GLB проходят `verify`.
-- [ ] **P6. Приёмка M10.** (`qa-debugger`) Полный DoD: typecheck, lint, test, e2e; обновить `PROGRESS.md`, пакет перенести в `docs/changes/archive/`.
+- [x] **P6. Приёмка M10.** (`qa-debugger`) Полный DoD: typecheck, lint, test, e2e; обновить `PROGRESS.md`, пакет перенести в `docs/changes/archive/`.
 
 ## Архив
 
