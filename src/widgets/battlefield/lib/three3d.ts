@@ -300,6 +300,8 @@ export function createThreeBattle(
         hud.waiting(t.x, PAD_H + 1.5, t.y, frameNo / 30)
       } else if (t.phase === 'active') {
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
+        // заказ улучшения ждёт кредитов: тот же спиннер, модель обычная
+        if (t.upgradeOrder !== null) hud.waiting(t.x, PAD_H + 1.5, t.y, frameNo / 30)
       } else {
         // стройка/улучшение: модель целиком, прогресс между тиками
         const pr = Math.min(1, t.progress + (t.phaseTicksTotal > 0 ? alpha / t.phaseTicksTotal : 0))
