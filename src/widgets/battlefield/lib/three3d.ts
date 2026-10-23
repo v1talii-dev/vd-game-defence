@@ -297,18 +297,18 @@ export function createThreeBattle(
       if (t.phase === 'queued') {
         // голограмма модели + спиннер «ждёт кредитов» на высоте кольца прогресса
         models.place(models.ghosts[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
-        hud.waiting(t.x, PAD_H + 1.5, t.y, frameNo / 30)
+        hud.waiting(t.x, PAD_H + 0.03, t.y, frameNo / 30)
       } else if (t.phase === 'active') {
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         // заказ улучшения ждёт кредитов: тот же спиннер, модель обычная
-        if (t.upgradeOrder !== null) hud.waiting(t.x, PAD_H + 1.5, t.y, frameNo / 30)
+        if (t.upgradeOrder !== null) hud.waiting(t.x, PAD_H + 0.03, t.y, frameNo / 30)
       } else {
         // стройка/улучшение: модель целиком, прогресс между тиками
         const pr = Math.min(1, t.progress + (t.phaseTicksTotal > 0 ? alpha / t.phaseTicksTotal : 0))
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         hud.progress(
           t.x,
-          PAD_H + 1.5,
+          PAD_H + 0.03,
           t.y,
           pr,
           t.phase === 'building' ? BUILD_COLOR : UPGRADE_COLOR,
