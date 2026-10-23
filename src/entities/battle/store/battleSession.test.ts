@@ -93,3 +93,17 @@ describe('очередь заказов в сторе боя', () => {
     ])
   })
 })
+
+describe('предпросмотр радиуса: hoveredBuildType', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('выставляется и сбрасывается, выбор постройки не затрагивается', () => {
+    const s = useBattleSession()
+    s.setBuildType('machineGun')
+    s.setHoveredBuildType('machineGun')
+    expect(s.hoveredBuildType).toBe('machineGun')
+    s.setHoveredBuildType(null)
+    expect(s.hoveredBuildType).toBeNull()
+    expect(s.buildType).toBe('machineGun')
+  })
+})

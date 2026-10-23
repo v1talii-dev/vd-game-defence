@@ -14,6 +14,17 @@ function toggle(type: TowerType) {
   session.setBuildType(session.buildType === type ? null : type)
 }
 
+// предпросмотр радиуса: только мышь и клавиатурный фокус (на touch mouseenter эмулируется тапом)
+function hover(type: TowerType | null, e: Event) {
+  const el = e.target as HTMLElement
+  const ok =
+    type === null ||
+    (e.type === 'focus'
+      ? el.matches(':focus-visible')
+      : (e as PointerEvent).pointerType === 'mouse')
+  if (ok) session.setHoveredBuildType(type)
+}
+
 function cancel() {
   session.pendingCell = null
   session.setBuildType(null)
@@ -36,6 +47,10 @@ const label = (type: TowerType, i: number) =>
       :title="label(type, i)"
       :data-testid="`build-${type}`"
       @click="toggle(type)"
+      @pointerenter="hover(type, $event)"
+      @pointerleave="hover(null, $event)"
+      @focus="hover(type, $event)"
+      @blur="hover(null, $event)"
     >
       <kbd class="key">{{ i + 1 }}</kbd>
       <UiIcon :name="type" :size="28" class="ico" />

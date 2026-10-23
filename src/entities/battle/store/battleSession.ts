@@ -58,6 +58,8 @@ export const useBattleSession = defineStore('battleSession', () => {
   const speed = ref<GameSpeed>(1)
   const paused = ref(false)
   const buildType = ref<TowerType | null>(null)
+  // слот меню построек под мышью/фокусом: предпросмотр радиуса (SPEC §4.6); на touch не выставляется
+  const hoveredBuildType = ref<TowerType | null>(null)
   const selectedTowerId = ref<number | null>(null)
   // копия выбранной башни для панели; обновляется по событиям
   const selectedTower = ref<TowerState | null>(null)
@@ -149,6 +151,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     paused.value = false
     speed.value = 1
     buildType.value = null
+    hoveredBuildType.value = null
     selectedTowerId.value = null
     selectedTower.value = null
     lastRejected.value = null
@@ -232,6 +235,10 @@ export const useBattleSession = defineStore('battleSession', () => {
     if (type) select(null)
   }
 
+  function setHoveredBuildType(type: TowerType | null) {
+    hoveredBuildType.value = type
+  }
+
   function confirmBuild() {
     if (buildType.value && pendingCell.value) {
       // копия: реактивный Proxy не должен попасть в симуляцию и structuredClone реплея
@@ -266,6 +273,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     speed,
     paused,
     buildType,
+    hoveredBuildType,
     selectedTowerId,
     selectedTower,
     lastRejected,
@@ -281,6 +289,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     dispatch,
     select,
     setBuildType,
+    setHoveredBuildType,
     exportReplay,
     stop,
   }
