@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 const DIR = new URL('../../public/assets/models/', import.meta.url)
 const LIMITS = {
   tower_machinegun: [1200, 1.15], tower_rocket: [1200, 1.15], tower_flamethrower: [1200, 1.15], enemy_technical: [1000, 0.95],
+  ruins_machinegun: [270, 1.15], ruins_rocket: [420, 1.15],
   enemy_tank: [1500, 0.95], enemy_boss: [2200, 1.5], deco_tree: [500, 1], deco_rock: [500, 1],
 }
 const files = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(LIMITS).map((n) => n + '.glb')
@@ -42,7 +43,7 @@ for (const f of files) {
   if (m0 && (m0.pbrMetallicRoughness?.metallicFactor ?? 1) !== 0) issues.push('metallic!=0')
   if (/^tower_/.test(name) && !(names.includes('base') && names.includes('head'))) issues.push('нет base/head')
   if (/^enemy_(tank|boss)/.test(name) && !(names.includes('hull') && names.includes('turret'))) issues.push('нет hull/turret')
-  if (name === 'enemy_technical' && !names.includes('body')) issues.push('нет body')
+  if ((name === 'enemy_technical' || /^ruins_/.test(name)) && !names.includes('body')) issues.push('нет body')
   if (issues.length) bad++
   console.log(pad(f, 22), pad(tris, 6), pad(size.map((v) => v.toFixed(2)).join(' '), 22), pad(mn[1].toFixed(3), 7), pad(mats, 4), names.join(',') + (issues.length ? '  !! ' + issues.join('; ') : ''))
 }
