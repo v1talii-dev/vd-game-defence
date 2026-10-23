@@ -264,15 +264,15 @@ export function createThreeBattle(
       if (target) a.yaw = Math.atan2(target.x - t.x, target.y - t.y)
       const k = 1 + 0.1 * (t.level - 1)
       if (t.phase === 'queued') {
-        // «призрак»: низкий силуэт + пульсирующее кольцо (дёшево, без прозрачного материала)
-        models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k, 0.2 * k)
+        // «призрак»: модель целиком + пульсирующее кольцо (дёшево, без прозрачного материала)
+        models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         hud.waiting(t.x, PAD_H + 0.03, t.y, frameNo / 30)
       } else if (t.phase === 'active') {
         models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
       } else {
-        // стройка/улучшение: рост по высоте 0.3..1, прогресс между тиками
+        // стройка/улучшение: модель целиком, прогресс между тиками
         const pr = Math.min(1, t.progress + (t.phaseTicksTotal > 0 ? alpha / t.phaseTicksTotal : 0))
-        models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k, k * (0.3 + 0.7 * pr))
+        models.place(models.towers[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         hud.bar(t.x, PAD_H + 0.95, t.y, pr, t.phase === 'building' ? BUILD_COLOR : UPGRADE_COLOR, 2)
       }
       hud.chevrons(t.x, PAD_H + 0.8, t.y, t.rank)

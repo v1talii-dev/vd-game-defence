@@ -3,9 +3,6 @@ export interface CameraRigLike {
   panGround(right: number, forward: number): void
   panByPixels(px: number, py: number, dx: number, dy: number): void
   zoomAt(factor: number, px: number, py: number): void
-  rotate(dir: 1 | -1): void
-  /** Продвинуть сглаживание поворота */
-  step(dtSec: number): boolean
   state: { zoom: number }
 }
 
@@ -18,7 +15,7 @@ export interface CameraControls3dOptions {
 }
 
 export interface CameraControls3d {
-  /** Вызывать каждый кадр: клавишный пан и плавный поворот */
+  /** Вызывать каждый кадр: клавишный пан */
   tick(dtSec: number): void
   /** true после перетаскивания/pinch — до следующего нажатия; клик после этого не выбирает клетку */
   isDragging(): boolean
@@ -29,7 +26,7 @@ const DRAG_THRESHOLD = 8 // px
 const KEY_SPEED = 12 // клеток в секунду при zoom 1
 const WHEEL_SENSITIVITY = 0.0015
 
-/** Ввод камеры 3D на DOM-событиях элемента: колесо, drag-пан, pinch, WASD/стрелки, Q/E */
+/** Ввод камеры 3D на DOM-событиях элемента: колесо, drag-пан, pinch, WASD/стрелки */
 export function attachCameraControls3d(
   el: HTMLElement,
   opts: CameraControls3dOptions,
@@ -102,8 +99,7 @@ export function attachCameraControls3d(
     const e = ev as KeyboardEvent
     if (!enabled() || e.ctrlKey || e.metaKey || e.altKey) return
     const k = e.code
-    if (!e.repeat && (k === 'KeyQ' || k === 'KeyE')) rig.rotate(k === 'KeyQ' ? -1 : 1)
-    else held.add(k)
+    held.add(k)
   }
   const onKeyUp = (ev: Event) => held.delete((ev as KeyboardEvent).code)
   const onBlur = () => held.clear()
@@ -127,7 +123,6 @@ export function attachCameraControls3d(
         const k = (KEY_SPEED * dtSec) / rig.state.zoom
         rig.panGround(right * k, fwd * k)
       }
-      rig.step(dtSec)
     },
     isDragging: () => dragged,
     destroy() {

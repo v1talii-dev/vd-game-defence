@@ -18,22 +18,12 @@ export const CAMERA_PITCH = (50 * Math.PI) / 180
 export const CAMERA_YAW = Math.PI / 4
 export const CAMERA_MIN_ZOOM = 0.6
 export const CAMERA_MAX_ZOOM = 6
-/** Скорость сглаживания поворота, 1/с */
-const YAW_RATE = 10
-
 export interface CameraState {
   /** Точка карты (в клетках), на которую смотрит камера */
   x: number
   y: number
   zoom: number
   yaw: number
-}
-
-/** Шаг плавного перехода yaw к цели; детерминирован, у цели защёлкивается точно */
-export function stepYaw(yaw: number, target: number, dtSec: number): number {
-  const diff = target - yaw
-  if (Math.abs(diff) < 1e-3) return target
-  return yaw + diff * (1 - Math.exp(-YAW_RATE * Math.max(0, dtSec)))
 }
 
 export function clampCameraState(s: CameraState, mapW: number, mapH: number): CameraState {
@@ -46,12 +36,11 @@ export function clampCameraState(s: CameraState, mapW: number, mapH: number): Ca
   }
 }
 
-/** Перспективная камера над картой; состояние {цель, zoom, yaw}, пан/зум/поворот, проекция клеток */
+/** Перспективная камера над картой; состояние {цель, zoom, yaw}, пан/зум, проекция клеток */
 export function createCameraRig(aspect: number, mapW: number, mapH: number, yaw = CAMERA_YAW) {
   const camera = new PerspectiveCamera(CAMERA_FOV, aspect, 0.1, 500)
   const baseDist = (Math.max(mapW, mapH) * 1.15) / Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180)
   const state: CameraState = { x: mapW / 2, y: mapH / 2, zoom: 1, yaw }
-  let yawTarget = yaw
   const ray = new Raycaster()
 
   const place = () => {
@@ -86,22 +75,8 @@ export function createCameraRig(aspect: number, mapW: number, mapH: number, yaw 
     },
     setState(p: Partial<CameraState>) {
       Object.assign(state, clampCameraState({ ...state, ...p }, mapW, mapH))
-      if (p.yaw !== undefined) yawTarget = state.yaw
       place()
     },
-    /** Поворот на 90°: dir = +1 / -1; сам переход делает step */
-    rotate(dir: 1 | -1) {
-      yawTarget += (dir * Math.PI) / 2
-    },
-    /** Продвинуть сглаживание поворота; true, если камера сдвинулась */
-    step(dtSec: number): boolean {
-      if (state.yaw === yawTarget) return false
-      state.yaw = stepYaw(state.yaw, yawTarget, dtSec)
-      place()
-      return true
-    },
-    /** Цель поворота; после завершения перехода равна state.yaw */
-    yawTarget: () => yawTarget,
     /** Сдвиг цели по земле относительно экрана: right вправо, forward вверх по экрану (клетки) */
     panGround(right: number, forward: number) {
       const s = Math.sin(state.yaw)

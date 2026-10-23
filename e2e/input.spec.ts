@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { pickBuildable, snapshot } from './helpers'
 
-// ввод 3D: постройка кликом, выбор по телу башни, Q/E, пан/зум
+// ввод 3D: постройка кликом, выбор по телу башни, Q/E не вращают, U улучшает, пан/зум
 test('постройка, выбор башни, камера', async ({ page }, info) => {
   await page.addInitScript(() => {
     localStorage.setItem(
@@ -28,16 +28,37 @@ test('постройка, выбор башни, камера', async ({ page },
   await page.mouse.click(p.x, p.y)
   await expect.poll(async () => (await snapshot(page)).towers).toBe(before.towers + 1)
 
-  // клик по телу башни выше основания (камера повёрнута)
+  await shot('4-building')
+
+  // Q/E не поворачивают камеру: проекция клетки не меняется
   await page.keyboard.press('Escape')
+  const still = await at()
+  await page.keyboard.press('KeyQ')
   await page.keyboard.press('KeyE')
   await page.waitForTimeout(600)
   p = await at()
+  expect(Math.hypot(p.x - still.x, p.y - still.y)).toBeLessThan(1)
+  // клик по телу башни выше основания
   await page.mouse.click(p.x, p.y - 6)
   await expect
     .poll(() => page.evaluate(() => window.__game!.session.selectedTowerId))
     .not.toBeNull()
   await shot('2-selected')
+
+  // U улучшает выбранную башню (достраиваем её и даём кредитов)
+  await page.evaluate(() => {
+    const g = window.__game!
+    g.step(120)
+  })
+  await page.keyboard.press('KeyU')
+  await expect
+    .poll(() => page.evaluate(() => window.__game!.state!.towers[0]?.phase))
+    .toBe('upgrading')
+  await shot('5-upgrading')
+  await page.keyboard.press('KeyU')
+  await expect
+    .poll(() => page.evaluate(() => window.__game!.state!.towers[0]?.phase))
+    .toBe('active')
 
   // пан и зум
   await page.mouse.move(p.x + 200, p.y + 100)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cellToWorld, createCameraRig, stepYaw, worldToCell } from './rig'
+import { cellToWorld, createCameraRig, worldToCell } from './rig'
 import { pickTarget, TOWER_PICK_HEIGHT, TOWER_PICK_RADIUS, TOWER_PICK_TOUCH_MARGIN } from './pick'
 
 const mk = () => {
@@ -83,22 +83,6 @@ describe('three rig', () => {
     expect(s.y).toBeGreaterThan(360)
   })
 
-  it('поворот на 90° плавный, детерминированный и точно завершается', () => {
-    const run = () => {
-      const rig = mk()
-      const start = rig.state.yaw
-      rig.rotate(1)
-      const trace: number[] = []
-      for (let i = 0; i < 120 && rig.step(1 / 30); i++) trace.push(rig.state.yaw)
-      return { start, trace, end: rig.state.yaw }
-    }
-    const a = run()
-    expect(a.end).toBe(a.start + Math.PI / 2)
-    expect(a.trace.length).toBeGreaterThan(3)
-    expect(a.trace[0]).toBeGreaterThan(a.start)
-    expect(run()).toEqual(a)
-    expect(stepYaw(0, 1, 0)).toBe(0)
-  })
 })
 
 describe('pickTarget', () => {

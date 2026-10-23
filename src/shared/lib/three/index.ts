@@ -2,7 +2,6 @@ export {
   cellToWorld,
   worldToCell,
   createCameraRig,
-  stepYaw,
   clampCameraState,
   CAMERA_FOV,
   CAMERA_PITCH,

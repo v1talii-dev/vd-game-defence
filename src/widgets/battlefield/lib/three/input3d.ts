@@ -156,8 +156,10 @@ export function attachInput3d(
     if (/^Digit[1-9]$/.test(e.code) && TOWER_TYPES[Number(e.code.slice(5)) - 1]) {
       session.setBuildType(TOWER_TYPES[Number(e.code.slice(5)) - 1]!)
       session.pendingCell = null
-    } else if (e.code === 'KeyU' && id !== null)
-      session.dispatch({ type: 'upgradeTower', towerId: id })
+    } else if (e.code === 'KeyU' && id !== null) {
+      const up = session.battle?.state.towers.find((t) => t.id === id)?.phase === 'upgrading'
+      session.dispatch({ type: up ? 'cancelUpgrade' : 'upgradeTower', towerId: id })
+    }
     else if (e.code === 'KeyS' && id !== null) session.dispatch({ type: 'sellTower', towerId: id })
     else if (e.code === 'Escape') cancel()
     else if (e.code === 'Space') session.dispatch({ type: 'startWave' })

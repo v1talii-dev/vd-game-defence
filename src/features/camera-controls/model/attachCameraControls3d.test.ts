@@ -20,8 +20,6 @@ const setup = () => {
     panGround: vi.fn(),
     panByPixels: vi.fn(),
     zoomAt: vi.fn(),
-    rotate: vi.fn(),
-    step: vi.fn(() => false),
     state: { zoom: 1 },
   } satisfies CameraRigLike
   const ctl = attachCameraControls3d(el as unknown as HTMLElement, {
@@ -71,17 +69,15 @@ describe('attachCameraControls3d', () => {
     expect(ctl.isDragging()).toBe(true)
   })
 
-  it('Q/E поворачивают, WASD двигает в tick, keysEnabled=false глушит', () => {
+  it('WASD, Q/E не поворачивают; WASD двигает в tick, keysEnabled=false глушит', () => {
     const { keys, rig, ctl } = setup()
     keys.fire('keydown', { code: 'KeyQ' })
     keys.fire('keydown', { code: 'KeyE' })
-    keys.fire('keydown', { code: 'KeyE', repeat: true })
-    expect(rig.rotate.mock.calls).toEqual([[-1], [1]])
+    expect(rig.panGround).not.toHaveBeenCalled()
     keys.fire('keydown', { code: 'KeyD' })
     keys.fire('keydown', { code: 'KeyW' })
     ctl.tick(0.5)
     expect(rig.panGround).toHaveBeenCalledWith(6, 6)
-    expect(rig.step).toHaveBeenCalledWith(0.5)
     keys.fire('keyup', { code: 'KeyD' })
     keys.fire('keyup', { code: 'KeyW' })
     rig.panGround.mockClear()
