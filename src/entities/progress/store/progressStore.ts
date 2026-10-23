@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { LEVELS, isLevelUnlocked, unlockedTowers } from '@/entities/level'
 import { getBrowserStorage } from '../lib/browserStorage'
 import { loadSave, withResult, writeSave, type Settings } from '../model/save'
 
@@ -22,10 +23,22 @@ export const useProgressStore = defineStore('progress', () => {
     })
   }
 
-  function recordResult(levelId: string, stars: number, hp: number) {
-    levels.value = withResult({ ...loaded.data, levels: levels.value }, levelId, stars, hp).levels
+  function recordResult(levelId: string, stars: number, hp: number, tick?: number) {
+    levels.value = withResult(
+      { ...loaded.data, levels: levels.value },
+      levelId,
+      stars,
+      hp,
+      tick,
+    ).levels
     persist()
   }
+
+  function isUnlocked(levelId: string): boolean {
+    const l = LEVELS.find((x) => x.id === levelId)
+    return !!l && isLevelUnlocked(l, levels.value)
+  }
+  const towers = computed(() => unlockedTowers(levels.value))
 
   function updateSettings(partial: Partial<Settings>) {
     settings.value = { ...settings.value, ...partial }
@@ -50,6 +63,8 @@ export const useProgressStore = defineStore('progress', () => {
     markHelpHintSeen,
     storageAvailable,
     recordResult,
+    isUnlocked,
+    unlockedTowers: towers,
     updateSettings,
     completeTutorial,
   }
