@@ -4,6 +4,7 @@ import { BattlefieldView } from '@/widgets/battlefield'
 import { BattleHud } from '@/widgets/hud'
 import { BuildMenu } from '@/widgets/build-menu'
 import { TowerPanel } from '@/widgets/tower-panel'
+import { OrderQueue } from '@/widgets/order-queue'
 import { ResultDialog } from '@/widgets/result-dialog'
 import { PauseMenu } from '@/widgets/pause-menu'
 import { KeyHelp } from '@/widgets/key-help'
@@ -22,6 +23,7 @@ const restart = () => runKey.value++
       <BattleHud @help="helpOpen = !helpOpen" />
       <BuildMenu />
       <TowerPanel />
+      <OrderQueue />
       <TutorialHints :key="runKey" />
     </div>
     <KeyHelp v-model="helpOpen" />

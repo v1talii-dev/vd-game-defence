@@ -20,8 +20,7 @@ export const CAMERA_MIN_ZOOM = 0.6
 export const CAMERA_MAX_ZOOM = 6
 /** Ширина внешнего поля земли вокруг карты, клеток (SPEC §3.5 «Кадр карты») */
 export const FIELD_MARGIN = 40
-/** Цвета внешнего поля, тумана и фона: фон = туман, чёрной пустоты нет */
-export const FIELD_COLOR = 0x9c8a5e
+/** Цвет тумана и фона за картой: чёрной пустоты нет */
 export const FOG_COLOR = 0x85764f
 /** Подгон карты под экран: >1 — чуть крупнее «впритык», углы карты слегка за кадром, остаётся запас пана */
 const FIT_PADDING = 1.12

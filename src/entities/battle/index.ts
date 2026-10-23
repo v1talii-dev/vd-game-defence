@@ -13,11 +13,5 @@ export type {
   RejectReason,
   WaveProgress,
 } from './model/types'
-export {
-  DAMAGE_MATRIX,
-  HQ_HP,
-  PREP_SECONDS,
-  STAR_THRESHOLDS,
-  START_MONEY,
-} from './config/battle'
-export { useBattleSession, type GameSpeed } from './store/battleSession'
+export { DAMAGE_MATRIX, HQ_HP, PREP_SECONDS, STAR_THRESHOLDS, START_MONEY } from './config/battle'
+export { useBattleSession, type GameSpeed, type QueueOrder } from './store/battleSession'

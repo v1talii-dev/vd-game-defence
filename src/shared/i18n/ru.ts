@@ -66,6 +66,15 @@ export const ru = {
     cancel: 'Отмена',
     orderQueued: 'Заказ в очереди: ждёт кредитов',
   },
+  queue: {
+    title: 'Очередь заказов',
+    build: 'Постройка',
+    upgrade: 'Улучшение → ур. {n}',
+    waiting: 'Ждёт кредитов',
+    working: { build: 'Строится', upgrade: 'Улучшается' },
+    cancel: 'Отменить заказ',
+    select: 'Выбрать башню',
+  },
   tower: {
     level: 'Уровень {n}',
     rank: 'Ранг: {name}',

@@ -5,7 +5,6 @@ export {
   clampCameraState,
   fitZoom,
   FIELD_MARGIN,
-  FIELD_COLOR,
   FOG_COLOR,
   CAMERA_FOV,
   CAMERA_PITCH,

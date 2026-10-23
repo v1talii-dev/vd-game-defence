@@ -5,13 +5,20 @@ test('blur ставит бой на паузу: тик не растёт', async
   await openBattle(page, '?seed=1')
   // убеждаемся, что без паузы время идёт
   const t0 = await page.evaluate(() => window.__game!.state!.tick)
-  await expect.poll(() => page.evaluate(() => window.__game!.state!.tick)).toBeGreaterThan(t0)
+  await page.waitForFunction((t) => window.__game!.state!.tick > t, t0)
 
   await page.evaluate(() => window.dispatchEvent(new Event('blur')))
   await expect(page.getByTestId('pause-menu')).toBeVisible()
 
   const frozen = await page.evaluate(() => window.__game!.state!.tick)
-  // окно наблюдения 1 с (в тике кадр = 33 мс, значит прошло бы ~30 тиков)
-  await page.evaluate(() => new Promise((r) => setTimeout(r, 1000)))
+  // окно наблюдения — 60 кадров rAF (без паузы за это время тик заведомо вырос бы), а не время
+  await page.evaluate(
+    () =>
+      new Promise<void>((r) => {
+        let n = 60
+        const f = () => (--n > 0 ? requestAnimationFrame(f) : r())
+        requestAnimationFrame(f)
+      }),
+  )
   expect(await page.evaluate(() => window.__game!.state!.tick)).toBe(frozen)
 })

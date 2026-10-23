@@ -99,15 +99,24 @@ export function pickBlocked(page: Page): Promise<Cell> {
 
 /** Центрирует камеру на клетке, ждёт кадра и возвращает client-координаты клетки */
 export async function cellClient(page: Page, cell: Cell): Promise<{ x: number; y: number }> {
-  const pt = await page.evaluate((c) => {
-    const g = window.__game!
-    return g.cellToScreen(c.x, c.y)
-  }, cell)
-  // матрица камеры обновляется в рендере: ждём два кадра, а не фиксированную паузу
-  await page.evaluate(
-    () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
+  // матрица камеры обновляется в рендере: ждём кадров, пока координаты не перестанут меняться
+  return page.evaluate(
+    (c) =>
+      new Promise<{ x: number; y: number }>((resolve) => {
+        const g = window.__game!
+        let prev = g.cellToScreen(c.x, c.y)
+        let stable = 0
+        const f = () => {
+          const cur = g.cellToScreen(c.x, c.y)
+          stable = cur.x === prev.x && cur.y === prev.y ? stable + 1 : 0
+          prev = cur
+          if (stable >= 2) resolve(cur)
+          else requestAnimationFrame(f)
+        }
+        requestAnimationFrame(f)
+      }),
+    cell,
   )
-  return pt
 }
 
 /** Сколько башен и кредитов сейчас в симуляции */

@@ -11,7 +11,10 @@ const closeBtn = ref<InstanceType<typeof UiButton> | null>(null)
 const hint = ref(false)
 let hintTimer: ReturnType<typeof setTimeout> | undefined
 
-const groups = Object.entries(HOTKEY_GROUPS) as [keyof typeof HOTKEY_GROUPS, readonly HotkeyAction[]][]
+const groups = Object.entries(HOTKEY_GROUPS) as [
+  keyof typeof HOTKEY_GROUPS,
+  readonly HotkeyAction[],
+][]
 
 function onKey(e: KeyboardEvent) {
   if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -149,8 +152,13 @@ kbd {
 }
 .hint {
   position: absolute;
-  right: calc(var(--safe-right) + var(--pad));
-  bottom: calc(var(--safe-bottom) + var(--pad));
+  /* под полосой HUD по центру: не задевает меню построек, панель башни и очередь слева */
+  top: calc(var(--safe-top) + var(--hud-h) + var(--pad));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 5;
+  pointer-events: none;
+  white-space: nowrap;
   padding: 4px 8px;
   font-size: var(--fs-sm);
   background: var(--panel-bg);

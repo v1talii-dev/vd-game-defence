@@ -9,14 +9,13 @@ import {
   Mesh,
   MeshLambertMaterial,
   Fog,
-  PlaneGeometry,
   Quaternion,
   Vector3,
   type BufferGeometry,
   type Scene,
 } from 'three'
 import type { LevelData } from '@/entities/level'
-import { cellToWorld, FIELD_COLOR, FIELD_MARGIN, FOG_COLOR } from '@/shared/lib/three'
+import { cellToWorld, FOG_COLOR } from '@/shared/lib/three'
 import type { GlbPart } from '@/shared/lib/three'
 import { DECO_GLB } from './modelConfig'
 import { PAD_H } from './models'
@@ -58,17 +57,7 @@ export function buildWorld(scene: Scene, level: LevelData, disposables: Disposab
   sand.updateMatrix()
   scene.add(sand)
 
-  // внешнее поле: земля продолжается за границу карты, к горизонту уходит в туман
-  const fw = level.width + 2 * FIELD_MARGIN
-  const fh = level.height + 2 * FIELD_MARGIN
-  const field = new Mesh(
-    track(new PlaneGeometry(fw, fh).rotateX(-Math.PI / 2)),
-    lambert(FIELD_COLOR),
-  )
-  field.position.copy(cellToWorld(level.width / 2, level.height / 2, -0.07))
-  field.matrixAutoUpdate = false
-  field.updateMatrix()
-  scene.add(field)
+  // внешнее поле — это фон renderer цвета тумана, без меша: полноэкранная заливка на CPU-рендере стоила ~35% FPS
   scene.fog = new Fog(FOG_COLOR, 100, 400) // near/far подстраивает rig под расстояние до цели
 
   const m = new Matrix4()

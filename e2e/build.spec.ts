@@ -37,6 +37,8 @@ test.describe('постройка башни', () => {
     const cell = await pickBlocked(page)
 
     await page.keyboard.press('1')
+    // клик только после того, как выбор башни дошёл до сессии
+    await page.waitForFunction(() => window.__game!.session.buildType === 'machineGun')
     const pt = await cellClient(page, cell)
     await page.mouse.click(pt.x, pt.y)
 

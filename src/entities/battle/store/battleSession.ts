@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { markRaw, ref, shallowRef } from 'vue'
 import { TICK_RATE } from '@/shared/config'
 import type { LevelData } from '@/entities/level'
-import type { TowerState, TowerType } from '@/entities/tower'
+import { TOWERS, upgradeCost, type TowerState, type TowerType } from '@/entities/tower'
 import { createBattle } from '../model/battle'
 import { recordCommands, type Replay } from '../model/replay'
 import type {
@@ -20,6 +20,18 @@ const PROGRESS_SYNC_TICKS = 5
 const MAX_TICKS_PER_FRAME = 8 * 4
 
 export type GameSpeed = 1 | 2 | 8
+
+export interface QueueOrder {
+  towerId: number
+  type: TowerType
+  kind: 'build' | 'upgrade'
+  status: 'waiting' | 'working'
+  // порядок сортировки (идущие — -1, ждущие — номер заказа)
+  key: number
+  toLevel: number
+  progress: number
+  cost: number
+}
 
 // Мост симуляция → Vue: держит Battle, крутит фиксированный шаг и зеркалит
 // в реактивные поля только то, что меняется по событиям (SPEC §3.1).
@@ -47,11 +59,64 @@ export const useBattleSession = defineStore('battleSession', () => {
   // выбранная на тач-экране клетка под постройку, ждёт подтверждения
   const pendingCell = ref<Cell | null>(null)
   const lastRejected = ref<{ reason: RejectReason; at: number } | null>(null)
+  const orders = ref<QueueOrder[]>([])
 
   function syncSelected() {
     const t = battle.value?.state.towers.find((x) => x.id === selectedTowerId.value)
     selectedTower.value = t ? { ...t, cell: { ...t.cell } } : null
     if (!t) selectedTowerId.value = null
+  }
+
+  // Панель очереди: заказы в порядке оплаты (идущие первыми, потом ждущие по номеру заказа).
+  // Пересобирается по событиям заказов и вместе с прогрессом выбранной башни.
+  function syncOrders() {
+    const list: QueueOrder[] = []
+    for (const t of battle.value?.state.towers ?? []) {
+      const base = { towerId: t.id, type: t.type }
+      if (t.phase === 'active' && t.upgradeOrder === null) continue
+      if (t.phase === 'queued')
+        list.push({
+          ...base,
+          kind: 'build',
+          status: 'waiting',
+          key: t.id,
+          toLevel: 1,
+          progress: 0,
+          cost: TOWERS[t.type].levels[0].cost,
+        })
+      else if (t.phase === 'building')
+        list.push({
+          ...base,
+          kind: 'build',
+          status: 'working',
+          key: -1,
+          toLevel: 1,
+          progress: t.progress,
+          cost: t.phasePaid,
+        })
+      else if (t.phase === 'upgrading')
+        list.push({
+          ...base,
+          kind: 'upgrade',
+          status: 'working',
+          key: -1,
+          toLevel: t.level + 1,
+          progress: t.progress,
+          cost: t.phasePaid,
+        })
+      else
+        list.push({
+          ...base,
+          kind: 'upgrade',
+          status: 'waiting',
+          key: t.upgradeOrder!,
+          toLevel: t.level + 1,
+          progress: 0,
+          cost: upgradeCost(t.type, t.level) ?? 0,
+        })
+    }
+    list.sort((a, b) => a.key - b.key || a.towerId - b.towerId)
+    orders.value = list
   }
 
   function syncWave() {
@@ -77,6 +142,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTower.value = null
     lastRejected.value = null
     queuedOrders.value = 0
+    orders.value = []
     pendingCell.value = null
     syncWave()
 
@@ -106,6 +172,7 @@ export const useBattleSession = defineStore('battleSession', () => {
       'towerPlaced',
     ] as const) {
       b.on(type, syncSelected)
+      b.on(type, syncOrders)
     }
     return b
   }
@@ -118,9 +185,13 @@ export const useBattleSession = defineStore('battleSession', () => {
     // таймер паузы между волнами обновляем раз в секунду, а не каждый кадр
     if (Math.floor(b.state.tick / TICK_RATE) !== before) syncWave()
     // прогресс стройки/улучшения выбранной башни — 6 раз в секунду, не каждый кадр
-    if (selectedTower.value && selectedTower.value.phase !== 'active') {
+    const working = orders.value.some((o) => o.status === 'working')
+    if (working || (selectedTower.value && selectedTower.value.phase !== 'active')) {
       const slot = Math.floor(b.state.tick / PROGRESS_SYNC_TICKS)
-      if (slot !== progressSlot) syncSelected()
+      if (slot !== progressSlot) {
+        syncSelected()
+        if (working) syncOrders()
+      }
       progressSlot = slot
     }
   }
@@ -185,6 +256,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTower,
     lastRejected,
     queuedOrders,
+    orders,
     pendingCell,
     confirmBuild,
     start,
