@@ -1,7 +1,13 @@
 import { TOWERS, TOWER_TYPES, upgradeCost, type TowerType } from '@/entities/tower'
 import { nextRandom, seedRng } from '@/shared/lib/sim'
 import { createBattle, type Battle } from '@/entities/battle'
-import type { LevelData } from '@/entities/level'
+import type { LevelConfig, LevelData } from '@/entities/level'
+
+// карта + конфиг уровня (волны, деньги, HP штаба, allowedTowers)
+export interface LevelCtx {
+  level: LevelData
+  config: LevelConfig
+}
 
 export type BotAction =
   | { place: TowerType; at: [number, number] }
@@ -10,12 +16,12 @@ export type BotAction =
 
 // скриптовый бот: выполняет действия по порядку, как только хватает денег
 export function runBot(
-  level: LevelData,
+  lv: LevelCtx,
   actions: readonly BotAction[],
   seed = 1,
   setup?: (battle: Battle) => void,
 ): Battle {
-  const battle = createBattle({ seed, level })
+  const battle = createBattle({ seed, level: lv.level, config: lv.config })
   setup?.(battle)
   let next = 0
   let pending = false
@@ -91,15 +97,15 @@ export const MACHINE_GUNS_ONLY: readonly BotAction[] = (() => {
 })()
 
 // случайный бот: действия выбирает собственный ГСЧ с seed (Math.random не используется)
-export function runRandomBot(level: LevelData, seed: number): Battle {
-  const battle = createBattle({ seed, level })
+export function runRandomBot(lv: LevelCtx, seed: number): Battle {
+  const battle = createBattle({ seed, level: lv.level, config: lv.config })
   let rng = seedRng(seed * 7919 + 13)
   const roll = (n: number): number => {
     const [v, next] = nextRandom(rng)
     rng = next
     return Math.floor(v * n)
   }
-  const free = [...level.buildable]
+  const free = [...lv.level.buildable]
   let pending = false
   battle.on('commandApplied', () => (pending = false))
   while (!battle.state.outcome && battle.state.tick < 30 * 60 * 30) {

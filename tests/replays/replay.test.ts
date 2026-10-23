@@ -2,16 +2,22 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { createBattle, recordCommands, runReplay, type Replay } from '@/entities/battle'
 import { hashState } from '@/shared/lib/sim'
-import { loadDesertBase } from '../helpers/level'
+import { getLevel, parseTiledLevel } from '@/entities/level'
 
-const level = loadDesertBase()
 const reference: Replay = JSON.parse(
   readFileSync(new URL('./reference.json', import.meta.url), 'utf8'),
 )
 
+// карта и конфиг берутся по levelId реплея
+const config = getLevel(reference.levelId)
+const level = parseTiledLevel(
+  config.id,
+  JSON.parse(readFileSync(new URL(`../../public/${config.tmj}`, import.meta.url), 'utf8')),
+)
+
 function hashesEvery100(replay: Replay): string[] {
   const hashes: string[] = []
-  const battle = createBattle({ seed: replay.seed, level })
+  const battle = createBattle({ seed: replay.seed, level, config })
   let i = 0
   while (!battle.state.outcome) {
     while (i < replay.commands.length && replay.commands[i]!.tick <= battle.state.tick + 1) {
@@ -39,13 +45,13 @@ describe('детерминизм (SPEC §6.3)', () => {
 
 describe('реплеи', () => {
   it('golden: reference.json проигрывается до победы, итог совпадает со снапшотом', () => {
-    const { state } = runReplay(reference, level)
+    const { state } = runReplay(reference, level, undefined, config)
     expect(state.outcome?.result).toBe('victory')
     expect(state).toMatchSnapshot()
   })
 
   it('recordCommands → runReplay воспроизводит живую партию', () => {
-    const battle = createBattle({ seed: 5, level })
+    const battle = createBattle({ seed: 5, level, config })
     const rec = recordCommands(battle)
     battle.dispatch({ type: 'placeTower', towerType: 'rocket', cell: { x: 12, y: 8 } })
     battle.step(10)
@@ -59,12 +65,12 @@ describe('реплеи', () => {
 
     const replay = JSON.parse(JSON.stringify(rec.replay())) as Replay
     expect(replay.commands.map((c) => c.tick)).toEqual([1, 11, 11, 611])
-    expect(hashState(runReplay(replay, level, battle.state.tick).state)).toBe(
+    expect(hashState(runReplay(replay, level, battle.state.tick, config).state)).toBe(
       hashState(battle.state),
     )
   })
 
   it('реплей другой карты отвергается', () => {
-    expect(() => runReplay({ ...reference, levelId: 'other' }, level)).toThrow()
+    expect(() => runReplay({ ...reference, levelId: 'other' }, level, undefined, config)).toThrow()
   })
 })
