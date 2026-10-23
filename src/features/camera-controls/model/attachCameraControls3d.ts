@@ -1,3 +1,5 @@
+import { matches } from '@/shared/config'
+
 /** Минимум, который нужен управлению от камеры (структурно совместим с createCameraRig из shared/lib/three) */
 export interface CameraRigLike {
   panGround(right: number, forward: number): void
@@ -8,7 +10,7 @@ export interface CameraRigLike {
 
 export interface CameraControls3dOptions {
   rig: CameraRigLike
-  /** false — клавиши игнорируются (например, S занята продажей башни) */
+  /** false — клавиши игнорируются */
   keysEnabled?: () => boolean
   /** Куда вешать keydown/keyup; по умолчанию window */
   keyTarget?: EventTarget
@@ -113,12 +115,12 @@ export function attachCameraControls3d(
   keyTarget.addEventListener('keyup', onKeyUp)
   keyTarget.addEventListener('blur', onBlur)
 
-  const any = (...codes: string[]) => codes.some((c) => held.has(c))
+  const any = (a: Parameters<typeof matches>[0]) => [...held].some((c) => matches(a, c))
   return {
     tick(dtSec) {
       if (!enabled()) held.clear()
-      const right = (any('KeyD', 'ArrowRight') ? 1 : 0) - (any('KeyA', 'ArrowLeft') ? 1 : 0)
-      const fwd = (any('KeyW', 'ArrowUp') ? 1 : 0) - (any('KeyS', 'ArrowDown') ? 1 : 0)
+      const right = (any('panRight') ? 1 : 0) - (any('panLeft') ? 1 : 0)
+      const fwd = (any('panUp') ? 1 : 0) - (any('panDown') ? 1 : 0)
       if (right || fwd) {
         const k = (KEY_SPEED * dtSec) / rig.state.zoom
         rig.panGround(right * k, fwd * k)

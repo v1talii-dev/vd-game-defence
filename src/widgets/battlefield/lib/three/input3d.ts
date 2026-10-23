@@ -3,6 +3,7 @@ import type { useBattleSession } from '@/entities/battle'
 import { ENEMIES } from '@/entities/enemy'
 import { TOWER_TYPES } from '@/entities/tower'
 import { attachCameraControls3d } from '@/features/camera-controls'
+import { matches, type HotkeyAction } from '@/shared/config'
 import {
   pickTarget,
   PICK_MIN_RADIUS,
@@ -35,11 +36,7 @@ export function attachInput3d(
   session: Session,
   buildable: Set<string>,
 ): Input3d {
-  const controls = attachCameraControls3d(el, {
-    rig,
-    // S занята продажей выбранной башни
-    keysEnabled: () => session.selectedTowerId === null,
-  })
+  const controls = attachCameraControls3d(el, { rig })
   let hover: Cell | null = null
   let enemyId: number | null = null
   let hoverObj: { kind: 'tower' | 'enemy'; id: number } | null = null
@@ -152,25 +149,37 @@ export function attachInput3d(
   const onKey = (e: KeyboardEvent) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return
     const id = session.selectedTowerId
+    const is = (a: HotkeyAction) => matches(a, e.code)
     let handled = true
     if (/^Digit[1-9]$/.test(e.code) && TOWER_TYPES[Number(e.code.slice(5)) - 1]) {
       session.setBuildType(TOWER_TYPES[Number(e.code.slice(5)) - 1]!)
       session.pendingCell = null
-    } else if (e.code === 'KeyU' && id !== null) {
-      const up = session.battle?.state.towers.find((t) => t.id === id)?.phase === 'upgrading'
-      session.dispatch({ type: up ? 'cancelUpgrade' : 'upgradeTower', towerId: id })
-    } else if (e.code === 'KeyS' && id !== null)
-      session.dispatch({ type: 'sellTower', towerId: id })
-    else if (e.code === 'Escape') cancel()
-    else if (e.code === 'Space') session.dispatch({ type: 'startWave' })
-    else if (e.code === 'KeyP') session.paused = !session.paused
-    else if (e.code === 'KeyF') session.speed = session.speed === 1 ? 2 : 1
-    else if (e.code === 'Period' && session.paused) session.step(1)
+    } else if (is('upgrade') && id !== null) {
+      const t = session.battle?.state.towers.find((t) => t.id === id)
+      const cancelIt = t?.phase === 'upgrading' || t?.upgradeOrder != null
+      session.dispatch({ type: cancelIt ? 'cancelUpgrade' : 'upgradeTower', towerId: id })
+    } else if (is('sell') && id !== null) session.dispatch({ type: 'sellTower', towerId: id })
+    else if (is('prevTower') || is('nextTower')) {
+      // только выбор: камера не двигается
+      const towers = session.battle?.state.towers ?? []
+      if (towers.length) {
+        const i = towers.findIndex((t) => t.id === id)
+        const step = is('nextTower') ? 1 : -1
+        const next =
+          i < 0 ? (step > 0 ? 0 : towers.length - 1) : (i + step + towers.length) % towers.length
+        session.pendingCell = null
+        session.select(towers[next]!.id)
+      }
+    } else if (is('cancel')) cancel()
+    else if (is('nextWave')) session.dispatch({ type: 'startWave' })
+    else if (is('pause')) session.paused = !session.paused
+    else if (is('speed')) session.speed = session.speed === 1 ? 2 : 1
+    else if (is('step') && session.paused) session.step(1)
     else handled = false
     if (handled) {
       e.preventDefault()
       // Space на сфокусированной кнопке не должен нажимать её второй раз
-      if (e.code === 'Space') (document.activeElement as HTMLElement | null)?.blur?.()
+      if (is('nextWave')) (document.activeElement as HTMLElement | null)?.blur?.()
     }
   }
   const noMenu = (e: Event) => e.preventDefault()

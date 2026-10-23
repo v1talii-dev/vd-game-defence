@@ -17,13 +17,20 @@ export interface GameApi {
       invested: number
       cell: Cell
       phase: string
+      upgradeOrder: number | null
     }[]
     enemies: unknown[]
     outcome: { result: 'victory'; stars: number } | { result: 'defeat' } | null
     wave: { phase: 'prep' | 'active'; number: number; total: number }
   } | null
   ready: boolean
-  session: { pendingCell: Cell | null; buildType: string | null; selectedTowerId: number | null }
+  session: {
+    pendingCell: Cell | null
+    buildType: string | null
+    selectedTowerId: number | null
+    dispatch(c: unknown): void
+    select(id: number | null): void
+  }
   level: { width: number; height: number; path: Cell[]; buildable: Cell[] }
   dispatch(cmd: unknown): void
   step(n?: number): void

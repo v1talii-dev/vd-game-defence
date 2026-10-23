@@ -96,6 +96,7 @@ export const useBattleSession = defineStore('battleSession', () => {
       'towerBuildStarted',
       'towerBuilt',
       'towerBuildCancelled',
+      'towerUpgradeOrdered',
       'towerUpgradeStarted',
       'towerUpgradeCancelled',
       'towerUpgraded',

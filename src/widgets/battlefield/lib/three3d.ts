@@ -5,6 +5,7 @@ import {
   CircleGeometry,
   ConeGeometry,
   DirectionalLight,
+  type Fog,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -20,7 +21,7 @@ import { ENEMIES, type EnemyState } from '@/entities/enemy'
 import type { LevelData } from '@/entities/level'
 import { projectilePosition, type ProjectileState } from '@/entities/projectile'
 import { TOWERS, towerStats } from '@/entities/tower'
-import { createCameraRig, loadGlbParts } from '@/shared/lib/three'
+import { createCameraRig, FOG_COLOR, loadGlbParts } from '@/shared/lib/three'
 import { stressSetup } from './stress'
 import { createDebug3d } from './three/debug3d'
 import { createEffects } from './three/effects'
@@ -84,7 +85,7 @@ export function createThreeBattle(
   const debugOn = new URLSearchParams(window.location.search).get('debug') === '1'
   const renderer = new WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.setClearColor(0x100d09)
+  renderer.setClearColor(FOG_COLOR)
   host.appendChild(renderer.domElement)
   const scene = new Scene()
   const rig = createCameraRig(1, level.width, level.height)
@@ -98,6 +99,7 @@ export function createThreeBattle(
   const track = <T extends { dispose(): void }>(x: T): T => (disposables.push(x), x)
 
   const world = buildWorld(scene, level, disposables)
+  rig.fog = scene.fog as Fog
   const models = createModels(scene, disposables)
   // GLB подгружаются лениво; при ошибке остаются примитивы
   let alive = true

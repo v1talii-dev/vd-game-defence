@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { cellToWorld, createCameraRig, worldToCell } from './rig'
+import {
+  cellToWorld,
+  clampCameraState,
+  createCameraRig,
+  fitZoom,
+  FIELD_MARGIN,
+  worldToCell,
+} from './rig'
 import { pickTarget, TOWER_PICK_HEIGHT, TOWER_PICK_RADIUS, TOWER_PICK_TOUCH_MARGIN } from './pick'
 
 const mk = () => {
@@ -47,14 +54,59 @@ describe('three rig', () => {
     expect(rig.pickCell(0, 0)).toBeNull() // небо / вне карты
   })
 
-  it('пан и зум ограничены краями карты и диапазоном', () => {
+  it('пан и зум ограничены полем и диапазоном', () => {
     const rig = mk()
-    rig.setState({ x: -50, y: 999, zoom: 100 })
-    expect(rig.state).toMatchObject({ x: 0, y: 10, zoom: 6 })
-    rig.panGround(100, 0)
-    expect(rig.state.x).toBeLessThanOrEqual(20)
+    rig.setState({ x: -500, y: 999, zoom: 100 })
+    expect(rig.state.zoom).toBe(6)
+    expect(rig.state.x).toBeLessThan(0)
+    expect(rig.state.y).toBeGreaterThan(10)
     rig.setState({ zoom: 0.01 })
-    expect(rig.state.zoom).toBe(0.6)
+    expect(rig.state.zoom).toBeGreaterThanOrEqual(0.6)
+  })
+
+  it('fitZoom: setViewport подгоняет zoom; на стартовом кадре пан и WASD двигают камеру', () => {
+    const rig = mk()
+    expect(rig.state.zoom).toBeCloseTo(fitZoom(16 / 9, 20, 10), 6)
+    const x0 = rig.state.x
+    const y0 = rig.state.y
+    rig.panByPixels(640, 360, 120, 0)
+    expect(Math.hypot(rig.state.x - x0, rig.state.y - y0)).toBeGreaterThan(1)
+    const x1 = rig.state.x
+    const y1 = rig.state.y
+    rig.panGround(0, 3)
+    expect(Math.hypot(rig.state.x - x1, rig.state.y - y1)).toBeGreaterThan(1)
+  })
+
+  it('кадр не выходит за внешнее поле при любом пане и зуме', () => {
+    for (const [w, h] of <[number, number][]>[
+      [1280, 720],
+      [1920, 1080],
+      [800, 1000],
+    ])
+      for (const zoom of [0.01, 0.8, 1.5, 6])
+        for (const [x, y] of <[number, number][]>[
+          [-99, -99],
+          [99, -99],
+          [99, 99],
+          [-99, 99],
+        ]) {
+          const rig = createCameraRig(w / h, 20, 10)
+          rig.setViewport(w, h)
+          rig.setState({ zoom, x, y })
+          for (const [px, py] of <[number, number][]>[
+            [0, 0],
+            [w, 0],
+            [w, h],
+            [0, h],
+          ]) {
+            const g = rig.screenToCell(px, py)!
+            expect(g.x).toBeGreaterThanOrEqual(-FIELD_MARGIN - 1e-6)
+            expect(g.x).toBeLessThanOrEqual(20 + FIELD_MARGIN + 1e-6)
+            expect(g.y).toBeGreaterThanOrEqual(-FIELD_MARGIN - 1e-6)
+            expect(g.y).toBeLessThanOrEqual(10 + FIELD_MARGIN + 1e-6)
+          }
+        }
+    expect(clampCameraState({ x: 0, y: 0, zoom: 1, yaw: 0 }, 20, 10).zoom).toBeGreaterThan(0)
   })
 
   it('зум сохраняет клетку под курсором', () => {

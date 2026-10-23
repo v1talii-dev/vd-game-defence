@@ -1,3 +1,5 @@
+import { keyLabel } from '@/shared/config'
+
 export const ru = {
   title: 'Рубеж обороны',
   menu: {
@@ -72,12 +74,14 @@ export const ru = {
     damage: 'Урон',
     fireRate: 'Скорострельность',
     range: 'Дальность',
-    upgrade: 'Улучшить ({n}) · U',
+    upgrade: `Улучшить ({n}) · ${keyLabel('upgrade')}`,
     upgradeMax: 'Максимум',
     sell: 'Продать (+{n})',
     sellShort: '+{n}',
-    upgradeTitle:
-      'Улучшение займёт {n} с (клавиша U; повторное нажатие во время улучшения отменяет)',
+    upgradeTitle: `Улучшение займёт {n} с (клавиша ${keyLabel('upgrade')}; повторное нажатие во время улучшения отменяет)`,
+    upgradeQueueHint: 'не хватает кредитов — улучшение встанет в очередь',
+    upgradeQueued: 'Улучшение в очереди (ждёт кредитов)',
+    cancelUpgradeOrderTitle: 'Отмена заказа улучшения: списаний нет',
     queued: 'Ждёт кредитов',
     building: 'Строится',
     upgrading: 'Улучшается',

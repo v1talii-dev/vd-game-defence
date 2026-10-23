@@ -60,6 +60,46 @@ test('постройка, выбор башни, камера', async ({ page },
     .poll(() => page.evaluate(() => window.__game!.state!.towers[0]?.phase))
     .toBe('active')
 
+  // R улучшает так же, как U
+  await page.keyboard.press('KeyR')
+  await expect
+    .poll(() => page.evaluate(() => window.__game!.state!.towers[0]?.phase))
+    .toBe('upgrading')
+  await page.keyboard.press('KeyR')
+  await expect
+    .poll(() => page.evaluate(() => window.__game!.state!.towers[0]?.phase))
+    .toBe('active')
+
+  // S двигает камеру при выбранной башне и не продаёт
+  const beforeS = await at()
+  await page.keyboard.down('KeyS')
+  await page.waitForTimeout(300)
+  await page.keyboard.up('KeyS')
+  const afterS = await at()
+  expect(Math.hypot(afterS.x - beforeS.x, afterS.y - beforeS.y)).toBeGreaterThan(5)
+  expect((await snapshot(page)).towers).toBe(before.towers + 1)
+
+  // Q/E циклят выбор между башнями, камера не прыгает
+  const cell2 = await pickBuildable(page, 5)
+  await page.evaluate((c) => {
+    const g = window.__game!
+    g.session.dispatch({ type: 'placeTower', towerType: g.state!.towers[0]!.type, cell: c })
+    g.step(120)
+  }, cell2)
+  const sel = () => page.evaluate(() => window.__game!.session.selectedTowerId)
+  const first = await sel()
+  await page.keyboard.press('KeyE')
+  const second = await sel()
+  expect(second).not.toBe(first)
+  await page.keyboard.press('KeyQ')
+  expect(await sel()).toBe(first)
+
+  // X продаёт выбранную
+  const count = (await snapshot(page)).towers
+  await page.keyboard.press('KeyX')
+  await expect.poll(async () => (await snapshot(page)).towers).toBe(count - 1)
+  await page.evaluate(() => window.__game!.session.select(null))
+
   // пан и зум
   await page.mouse.move(p.x + 200, p.y + 100)
   await page.mouse.wheel(0, -300)

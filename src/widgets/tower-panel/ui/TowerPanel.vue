@@ -38,7 +38,7 @@ const rankTitle = computed(() =>
 const sellTitle = computed(() =>
   tower.value ? t.tower.sell.replace('{n}', String(sellRefund(tower.value.invested))) : '',
 )
-// кнопка остаётся активной (команда вернёт отказ с подсказкой), но выглядит «не по карману»
+// кнопка остаётся активной (без денег улучшение встанет в очередь), но выглядит «не по карману»
 const poor = computed(() => upgrade.value !== null && session.money < upgrade.value)
 const priorities: TargetPriority[] = ['first', 'strongest', 'closest']
 
@@ -51,19 +51,24 @@ const secondsLeft = computed(() =>
     String(Math.ceil((tower.value?.phaseTicksLeft ?? 0) / TICK_RATE)),
   ),
 )
+// заказ улучшения ждёт кредитов в общей очереди (башня при этом активна)
+const upgradeOrdered = computed(() => tower.value?.upgradeOrder != null)
 const upgradeTitle = computed(() =>
   tower.value && tower.value.level < 3
     ? t.tower.upgradeTitle.replace(
         '{n}',
         String(upgradeTicks(tower.value.type, tower.value.level as 1 | 2) / TICK_RATE),
-      )
+      ) + (poor.value ? ` — ${t.tower.upgradeQueueHint}` : '')
     : '',
 )
 const cancelTitle = computed(() =>
-  phase.value === 'queued'
-    ? t.tower.cancelQueuedTitle
-    : t.tower.cancelTitle.replace('{n}', String(tower.value?.phasePaid ?? 0)),
+  upgradeOrdered.value
+    ? t.tower.cancelUpgradeOrderTitle
+    : phase.value === 'queued'
+      ? t.tower.cancelQueuedTitle
+      : t.tower.cancelTitle.replace('{n}', String(tower.value?.phasePaid ?? 0)),
 )
+const showCancel = computed(() => phase.value !== 'active' || upgradeOrdered.value)
 
 function cmd(c: 'upgradeTower' | 'sellTower') {
   session.dispatch({ type: c, towerId: tower.value!.id })
@@ -71,7 +76,8 @@ function cmd(c: 'upgradeTower' | 'sellTower') {
 
 function cancel() {
   const towerId = tower.value!.id
-  session.dispatch({ type: phase.value === 'upgrading' ? 'cancelUpgrade' : 'cancelBuild', towerId })
+  const upgrading = phase.value === 'upgrading' || upgradeOrdered.value
+  session.dispatch({ type: upgrading ? 'cancelUpgrade' : 'cancelBuild', towerId })
 }
 </script>
 
@@ -116,8 +122,8 @@ function cancel() {
         {{ t.priorityShort[p] }}
       </button>
     </div>
-    <div v-if="phase !== 'active'" class="phase" data-testid="tower-phase">
-      <span>{{ t.tower[phase] }}</span>
+    <div v-if="showCancel" class="phase" data-testid="tower-phase">
+      <span>{{ upgradeOrdered ? t.tower.upgradeQueued : t.tower[phase as 'queued'] }}</span>
       <span v-if="busy" data-testid="tower-seconds">{{ secondsLeft }}</span>
     </div>
     <i
@@ -133,7 +139,7 @@ function cancel() {
     </i>
     <div class="actions">
       <UiButton
-        v-if="phase !== 'active'"
+        v-if="showCancel"
         size="sm"
         variant="secondary"
         :title="cancelTitle"
@@ -145,7 +151,7 @@ function cancel() {
         {{ t.tower.cancel }}
       </UiButton>
       <UiButton
-        v-if="phase === 'active'"
+        v-if="phase === 'active' && !upgradeOrdered"
         size="sm"
         :disabled="upgrade === null"
         :class="{ poor }"

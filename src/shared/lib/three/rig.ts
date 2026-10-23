@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Raycaster, Vector2, Vector3 } from 'three'
+import { PerspectiveCamera, Raycaster, Vector2, Vector3, type Fog } from 'three'
 
 // SPEC §3.5: x, y клетки -> мировые x, z; высота z -> мировая y; клетка = 1 единица
 export function cellToWorld(x: number, y: number, z = 0): Vector3 {
@@ -18,6 +18,13 @@ export const CAMERA_PITCH = (50 * Math.PI) / 180
 export const CAMERA_YAW = Math.PI / 4
 export const CAMERA_MIN_ZOOM = 0.6
 export const CAMERA_MAX_ZOOM = 6
+/** Ширина внешнего поля земли вокруг карты, клеток (SPEC §3.5 «Кадр карты») */
+export const FIELD_MARGIN = 40
+/** Цвета внешнего поля, тумана и фона: фон = туман, чёрной пустоты нет */
+export const FIELD_COLOR = 0x9c8a5e
+export const FOG_COLOR = 0x85764f
+/** Подгон карты под экран: >1 — чуть крупнее «впритык», углы карты слегка за кадром, остаётся запас пана */
+const FIT_PADDING = 1.12
 export interface CameraState {
   /** Точка карты (в клетках), на которую смотрит камера */
   x: number
@@ -26,12 +33,87 @@ export interface CameraState {
   yaw: number
 }
 
-export function clampCameraState(s: CameraState, mapW: number, mapH: number): CameraState {
+const baseDistOf = (mapW: number, mapH: number) =>
+  (Math.max(mapW, mapH) * 1.15) / Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180)
+
+/** Ставит камеру на цель (tx, ty) на расстоянии dist под фиксированным наклоном */
+function pose(cam: PerspectiveCamera, tx: number, ty: number, yaw: number, dist: number) {
+  const h = Math.cos(CAMERA_PITCH) * dist
+  cam.position.set(tx + Math.sin(yaw) * h, Math.sin(CAMERA_PITCH) * dist, ty + Math.cos(yaw) * h)
+  cam.lookAt(tx, 0, ty)
+  cam.updateMatrixWorld()
+}
+
+const CORNERS: [number, number][] = [
+  [-1, -1],
+  [1, -1],
+  [1, 1],
+  [-1, 1],
+]
+const probeCam = new PerspectiveCamera(CAMERA_FOV, 1, 0.1, 500)
+const probeRay = new Raycaster()
+const probeNdc = new Vector2()
+const probeVec = new Vector3()
+
+/** Стартовый zoom: карта целиком заполняет вьюпорт (по самому дальнему углу карты) */
+export function fitZoom(aspect: number, mapW: number, mapH: number, yaw = CAMERA_YAW): number {
+  probeCam.aspect = aspect
+  probeCam.updateProjectionMatrix()
+  const base = baseDistOf(mapW, mapH)
+  let z = 1
+  for (let i = 0; i < 4; i++) {
+    pose(probeCam, 0, 0, yaw, base / z)
+    let m = 0
+    for (const [sx, sy] of CORNERS) {
+      probeVec.set((sx * mapW) / 2, 0, (sy * mapH) / 2).project(probeCam)
+      m = Math.max(m, Math.abs(probeVec.x), Math.abs(probeVec.y))
+    }
+    z *= FIT_PADDING / m
+  }
+  return z
+}
+
+/** Смещения углов вьюпорта на земле относительно цели при zoom = 1 (x, z мира) */
+function groundExtent(aspect: number, yaw: number, base: number) {
+  probeCam.aspect = aspect
+  probeCam.updateProjectionMatrix()
+  pose(probeCam, 0, 0, yaw, base)
+  const e = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+  for (const [sx, sy] of CORNERS) {
+    probeRay.setFromCamera(probeNdc.set(sx, sy), probeCam)
+    const { origin: o, direction: d } = probeRay.ray
+    const t = -o.y / Math.min(d.y, -1e-6)
+    e.minX = Math.min(e.minX, o.x + d.x * t)
+    e.maxX = Math.max(e.maxX, o.x + d.x * t)
+    e.minY = Math.min(e.minY, o.z + d.z * t)
+    e.maxY = Math.max(e.maxY, o.z + d.z * t)
+  }
+  return e
+}
+
+/**
+ * Ограничения камеры: zoom не меньше диапазона и не меньше того, при котором вьюпорт выходит за внешнее поле;
+ * цель сдвигается так, чтобы углы вьюпорта на земле оставались внутри поля (смещения углов ~ 1/zoom)
+ */
+export function clampCameraState(
+  s: CameraState,
+  mapW: number,
+  mapH: number,
+  aspect = 16 / 9,
+): CameraState {
   const c = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+  const e = groundExtent(aspect, s.yaw, baseDistOf(mapW, mapH))
+  const fieldMin = Math.max(
+    (e.maxX - e.minX) / (mapW + 2 * FIELD_MARGIN),
+    (e.maxY - e.minY) / (mapH + 2 * FIELD_MARGIN),
+  )
+  const zoom = c(s.zoom, Math.max(CAMERA_MIN_ZOOM, fieldMin), CAMERA_MAX_ZOOM)
+  const axis = (v: number, size: number, lo: number, hi: number) =>
+    c(v, -FIELD_MARGIN - lo / zoom, size + FIELD_MARGIN - hi / zoom)
   return {
-    x: c(s.x, 0, mapW),
-    y: c(s.y, 0, mapH),
-    zoom: c(s.zoom, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM),
+    x: axis(s.x, mapW, e.minX, e.maxX),
+    y: axis(s.y, mapH, e.minY, e.maxY),
+    zoom,
     yaw: s.yaw,
   }
 }
@@ -39,20 +121,26 @@ export function clampCameraState(s: CameraState, mapW: number, mapH: number): Ca
 /** Перспективная камера над картой; состояние {цель, zoom, yaw}, пан/зум, проекция клеток */
 export function createCameraRig(aspect: number, mapW: number, mapH: number, yaw = CAMERA_YAW) {
   const camera = new PerspectiveCamera(CAMERA_FOV, aspect, 0.1, 500)
-  const baseDist = (Math.max(mapW, mapH) * 1.15) / Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180)
-  const state: CameraState = { x: mapW / 2, y: mapH / 2, zoom: 1, yaw }
+  const baseDist = baseDistOf(mapW, mapH)
+  const state: CameraState = {
+    x: mapW / 2,
+    y: mapH / 2,
+    zoom: fitZoom(aspect, mapW, mapH, yaw),
+    yaw,
+  }
   const ray = new Raycaster()
+  /** Туман сцены: near/far следуют за расстоянием до цели */
+  let fog: Fog | null = null
+  /** Пока игрок не менял zoom, при смене размера вьюпорта подгоняем карту заново */
+  let userZoomed = false
 
   const place = () => {
     const dist = baseDist / state.zoom
-    const h = Math.cos(CAMERA_PITCH) * dist
-    camera.position.set(
-      state.x + Math.sin(state.yaw) * h,
-      Math.sin(CAMERA_PITCH) * dist,
-      state.y + Math.cos(state.yaw) * h,
-    )
-    camera.lookAt(state.x, 0, state.y)
-    camera.updateMatrixWorld()
+    pose(camera, state.x, state.y, state.yaw, dist)
+    if (fog) {
+      fog.near = dist * 1.1
+      fog.far = dist * 2.8
+    }
   }
   place()
 
@@ -63,9 +151,15 @@ export function createCameraRig(aspect: number, mapW: number, mapH: number, yaw 
   const api = {
     camera,
     state,
+    set fog(f: Fog | null) {
+      fog = f
+      place()
+    },
     resize(a: number) {
       camera.aspect = a
       camera.updateProjectionMatrix()
+      if (!userZoomed) state.zoom = fitZoom(a, mapW, mapH, state.yaw)
+      Object.assign(state, clampCameraState(state, mapW, mapH, a))
       place()
     },
     setViewport(w: number, h: number) {
@@ -74,7 +168,8 @@ export function createCameraRig(aspect: number, mapW: number, mapH: number, yaw 
       api.resize(vw / vh)
     },
     setState(p: Partial<CameraState>) {
-      Object.assign(state, clampCameraState({ ...state, ...p }, mapW, mapH))
+      if (p.zoom !== undefined) userZoomed = true
+      Object.assign(state, clampCameraState({ ...state, ...p }, mapW, mapH, camera.aspect))
       place()
     },
     /** Сдвиг цели по земле относительно экрана: right вправо, forward вверх по экрану (клетки) */
