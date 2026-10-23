@@ -12,6 +12,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // локально WebGL рендерится на CPU (SwiftShader): больше 2 браузеров грузят процессор на 100%
+  workers: process.env.CI ? undefined : 2,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: BASE,

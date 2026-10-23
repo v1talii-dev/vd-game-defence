@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { pickBuildable, snapshot } from './helpers'
 
 // ввод 3D: постройка кликом, выбор по телу башни, Q/E, пан/зум
-test('r3d: постройка, выбор башни, камера', async ({ page }, info) => {
+test('постройка, выбор башни, камера', async ({ page }, info) => {
   await page.addInitScript(() => {
     localStorage.setItem(
       'vdgd:save:v1',

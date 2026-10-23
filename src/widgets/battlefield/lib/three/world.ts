@@ -18,6 +18,7 @@ import { cellToWorld } from '@/shared/lib/three'
 import type { GlbPart } from '@/shared/lib/three'
 import { DECO_GLB } from './modelConfig'
 import { PAD_H } from './models'
+import { roadSegments } from './roadSegments'
 
 type Disposables = { dispose(): void }[]
 
@@ -70,17 +71,8 @@ export function buildWorld(scene: Scene, level: LevelData, disposables: Disposab
 
   // плато: приподнятые площадки на клетках строительства
   const roadSegs = inst(new BoxGeometry(1, 0.04, 1), 0x6b5a3e, level.path.length)
-  for (let i = 0; i + 1 < level.path.length; i++) {
-    const a = level.path[i]!
-    const b = level.path[i + 1]!
-    const c = cellToWorld((a.x + b.x) / 2, (a.y + b.y) / 2, 0)
-    add(
-      roadSegs,
-      c,
-      new Vector3(1, 1, Math.hypot(b.x - a.x, b.y - a.y) + 1),
-      Math.atan2(b.x - a.x, b.y - a.y),
-    )
-  }
+  for (const s of roadSegments(level.path, level.width, level.height))
+    add(roadSegs, cellToWorld(s.cx, s.cy, 0), new Vector3(1, 1, s.length), s.yaw)
 
   const pads = inst(new BoxGeometry(0.94, PAD_H, 0.94), 0x8fa36a, level.buildable.length)
   const one = new Vector3(1, 1, 1)
