@@ -161,10 +161,13 @@ const label = (type: TowerType, i: number) =>
 }
 @media (pointer: coarse) {
   .build-menu {
-    --slot: 4rem;
+    --slot: 3.5rem;
 
-    right: var(--safe-right);
-    justify-content: center;
+    left: 50%;
+    translate: -50% 0; /* по центру, в зоне больших пальцев */
+    max-width: calc(100vw - var(--safe-left) - var(--safe-right));
+    gap: var(--gap);
+    padding: 4px var(--gap);
   }
   .key {
     display: none;

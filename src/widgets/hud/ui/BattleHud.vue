@@ -114,7 +114,7 @@ watch(
         <UiIcon name="fast" :size="16" />
       </UiButton>
       <UiButton
-        class="icon-btn"
+        class="icon-btn help-btn"
         variant="secondary"
         :aria-label="t.help.open"
         :title="t.help.open + ' (' + keyLabel('help') + ')'"
@@ -196,6 +196,7 @@ watch(
   transition: width 0.3s var(--ease);
 }
 .wave {
+  white-space: nowrap;
   color: var(--c-sand);
 }
 .timer {
@@ -228,6 +229,7 @@ watch(
   inset: -4px;
 }
 .hud .start {
+  white-space: nowrap;
   min-height: 2rem;
   font-size: var(--fs-sm);
 }
@@ -242,6 +244,13 @@ watch(
   }
   .hud .start {
     min-height: var(--ui-h-touch);
+  }
+  .hud .help-btn {
+    display: none; /* справка по клавишам на таче не нужна */
+  }
+  .hud,
+  .group {
+    gap: var(--gap);
   }
 }
 .toast {

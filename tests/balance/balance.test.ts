@@ -51,8 +51,7 @@ describe.each(implemented.map((config) => [config.id, config] as const))(
       expect(battle.state.wave.number).toBeLessThanOrEqual(th.noTowersMaxWave)
     })
 
-    // TODO(D5): с ремонтом и восстановлением (D2) эталон побеждает, но с HP штаба 6 < 10; числа HP/цен/урона подбирает D5, порог не менять.
-    it.skip(`эталонная расстановка побеждает с HP ≥ ${th.referenceHpMin}`, () => {
+    it(`эталонная расстановка побеждает с HP ≥ ${th.referenceHpMin}`, () => {
       for (const seed of [1, 2, 3, 4, 5]) {
         const battle = runBot(lv, th.reference, seed)
         expect(battle.state.outcome?.result).toBe('victory')
@@ -68,8 +67,7 @@ describe.each(implemented.map((config) => [config.id, config] as const))(
       expect(battle.state.wave.number).toBeLessThanOrEqual(th.monoWave[1])
     })
 
-    // TODO(D5): со всеми ремонтами случайные боты выигрывают 0 из 50 (до M13b — 17 из 50); вернуть после подбора чисел D5.
-    it.skip('50 случайных ботов — доля побед в границах', () => {
+    it('50 случайных ботов — доля побед в границах', () => {
       let wins = 0
       for (let seed = 1; seed <= 50; seed++) {
         if (runRandomBot(lv, seed).state.outcome?.result === 'victory') wins++

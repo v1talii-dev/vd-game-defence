@@ -107,7 +107,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 8px;
   max-width: 94vw;
-  max-height: 94vh;
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
+  overscroll-behavior: contain;
   overflow: auto;
   animation: ui-pop-in 0.25s var(--ease);
 }
@@ -149,6 +150,11 @@ kbd {
   white-space: nowrap;
   background: var(--c-steel-700);
   border-radius: var(--r);
+}
+@media (pointer: coarse) {
+  .hint {
+    display: none; /* клавиш на таче нет */
+  }
 }
 .hint {
   position: absolute;

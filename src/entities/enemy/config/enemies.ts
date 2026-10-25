@@ -15,7 +15,7 @@ export interface EnemyConfig {
   // высота полёта над землёй, 0 у наземных
   readonly flightHeight: number
   // при падении HP ниже половины выпускает этих врагов (один раз)
-  // атака башен на ходу; нет блока — враг башни не бьёт (радиус меньше радиуса любой башни)
+  // атака башен на ходу (урон подобран D5: башни теряются редко, ремонт окупается); нет блока — враг башни не бьёт (радиус меньше радиуса любой башни)
   readonly towerAttack?: {
     readonly range: number
     readonly damage: number
@@ -42,7 +42,7 @@ export const ENEMIES = {
     leak: 2,
     hitHeight: 0.5,
     flightHeight: 0,
-    towerAttack: { range: 2.5, damage: 12, reload: 2 },
+    towerAttack: { range: 2.5, damage: 5, reload: 2.5 },
   },
   technical: {
     armor: 'light',
@@ -61,7 +61,7 @@ export const ENEMIES = {
     leak: 4,
     hitHeight: 0.6,
     flightHeight: 0,
-    towerAttack: { range: 3, damage: 30, reload: 2.5 },
+    towerAttack: { range: 3, damage: 12, reload: 3 },
   },
   drone: {
     armor: 'air',
@@ -80,7 +80,7 @@ export const ENEMIES = {
     leak: 20,
     hitHeight: 1,
     flightHeight: 0,
-    towerAttack: { range: 4, damage: 60, reload: 2 },
+    towerAttack: { range: 4, damage: 25, reload: 2.5 },
     spawnOnHalfHp: { type: 'grunt', count: 4 },
   },
 } as const satisfies Record<EnemyType, EnemyConfig>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EnemyType } from '@/entities/enemy/@x/battle'
+import { ENEMIES, type EnemyType } from '@/entities/enemy/@x/battle'
 import type { LevelData } from '@/entities/level/@x/battle'
 import {
   RANKS,
@@ -15,6 +15,8 @@ import { createBattle } from './battle'
 import type { BattleEvent, BattleEventOf } from './types'
 
 // путь по y = 2.5, площадки симметрично сверху (y = 1) и снизу (y = 3)
+const MG_HP = TOWERS.machineGun.levels[0].hp
+
 const level: LevelData = {
   id: 'test',
   width: 24,
@@ -55,12 +57,12 @@ function setup(towers: readonly [TowerType, number, number][]) {
 
 describe('HP башен', () => {
   it('максимум HP: уровень × множитель ранга', () => {
-    expect(towerMaxHp('machineGun', 1, 0)).toBe(140)
-    expect(towerMaxHp('machineGun', 3, 0)).toBe(230)
-    expect(towerMaxHp('rocket', 1, 0)).toBe(180)
-    expect(towerMaxHp('rocket', 3, 3)).toBe(Math.round(300 * RANKS[3].hpMul))
+    expect(towerMaxHp('machineGun', 1, 0)).toBe(MG_HP)
+    expect(towerMaxHp('machineGun', 3, 0)).toBe(TOWERS.machineGun.levels[2].hp)
+    expect(towerMaxHp('rocket', 1, 0)).toBe(TOWERS.rocket.levels[0].hp)
+    expect(towerMaxHp('rocket', 3, 3)).toBe(Math.round(TOWERS.rocket.levels[2].hp * RANKS[3].hpMul))
     const t = setup([['machineGun', 3, 1]]).battle.state.towers[0]!
-    expect(t).toMatchObject({ hp: 140, maxHp: 140 })
+    expect(t).toMatchObject({ hp: MG_HP, maxHp: MG_HP })
   })
 })
 
@@ -71,8 +73,8 @@ describe('атака врагов по башням', () => {
     s.battle.step(120)
     expect(s.of('enemyFired').length).toBeGreaterThan(0)
     const hit = s.of('towerDamaged')[0]!
-    expect(hit.amount).toBe(type === 'grenadier' ? 12 : type === 'tank' ? 30 : 60)
-    expect(s.battle.state.towers[0]!.hp).toBeLessThan(140)
+    expect(hit.amount).toBe(ENEMIES[type].towerAttack.damage)
+    expect(s.battle.state.towers[0]!.hp).toBeLessThan(MG_HP)
   })
 
   it.each(['grunt', 'technical', 'drone'] as const)('%s башню не бьёт', (type) => {
@@ -80,7 +82,7 @@ describe('атака врагов по башням', () => {
     s.spawn(type, 3, 1)
     s.battle.step(300)
     expect(s.of('enemyFired')).toEqual([])
-    expect(s.battle.state.towers[0]!.hp).toBe(140)
+    expect(s.battle.state.towers[0]!.hp).toBe(MG_HP)
   })
 
   it('урон наносится в момент прилёта, а не выстрела', () => {
@@ -92,7 +94,7 @@ describe('атака врагов по башням', () => {
       s.battle.step()
       if (firedAt < 0 && s.of('enemyFired').length) {
         firedAt = s.battle.state.tick
-        expect(s.battle.state.towers[0]!.hp).toBe(140)
+        expect(s.battle.state.towers[0]!.hp).toBe(MG_HP)
         expect(s.battle.state.projectiles.some((p) => p.hostile && p.kind === 'shell')).toBe(true)
       }
       if (s.of('towerDamaged').length) hitAt = s.battle.state.tick
@@ -130,11 +132,19 @@ describe('атака врагов по башням', () => {
     ])
     const [a] = s.battle.state.towers
     s.spawn('grenadier')
-    s.battle.step(330)
-    // третий выстрел (x ≈ 10.6) — когда вторая башня уже ближе, но цель прежняя
+    // перезарядка гренадёра длинная: ускоряем стрельбу, чтобы пятый выстрел (x ≈ 10.6) пришёлся на момент,
+    // когда вторая башня уже ближе, а цель прежняя
+    let shots = 0
+    for (let i = 0; i < 600 && shots < 5; i++) {
+      s.battle.step()
+      if (s.of('enemyFired').length > shots) {
+        shots = s.of('enemyFired').length
+        for (const e of s.battle.state.enemies) e.towerCooldown = 30
+      }
+    }
     const fired = s.of('enemyFired')
-    expect(fired.length).toBeGreaterThanOrEqual(3)
-    expect(fired.slice(0, 3).map((e) => e.towerId)).toEqual([a!.id, a!.id, a!.id])
+    expect(fired.length).toBeGreaterThanOrEqual(5)
+    expect(fired.slice(0, 5).map((e) => e.towerId)).toEqual(Array(5).fill(a!.id))
   })
 
   it('строящаяся неуязвима, улучшающаяся уязвима', () => {
@@ -142,6 +152,8 @@ describe('атака врагов по башням', () => {
     const fired: number[] = []
     battle.on('enemyFired', (e) => fired.push(e.towerId))
     battle.dispatch({ type: 'placeTower', towerType: 'machineGun', cell: { x: 2, y: 1 } })
+    // идёт волна: вне волны урон тут же гасит авторемонт
+    battle.dispatch({ type: 'startWave' })
     battle.dispatch({ type: 'spawnEnemies', enemyType: 'grenadier', count: 1, spacing: 0 })
     battle.step(buildTicks('machineGun') - 3)
     for (const e of battle.state.enemies) e.hp = e.maxHp = 1e9
@@ -153,7 +165,7 @@ describe('атака врагов по башням', () => {
     battle.step(60)
     expect(battle.state.towers[0]!.phase).toBe('upgrading')
     expect(fired.length).toBeGreaterThan(0)
-    expect(battle.state.towers[0]!.hp).toBeLessThan(140)
+    expect(battle.state.towers[0]!.hp).toBeLessThan(MG_HP)
   })
 })
 
@@ -164,7 +176,7 @@ describe('разрушение', () => {
     t.xp = 400
     t.rank = 2
     t.maxHp = towerMaxHp('machineGun', 1, 2)
-    t.hp = 5 // регенерация элиты чуть добавит до выстрела
+    t.hp = 1 // регенерация элиты чуть добавит до выстрела, но не больше урона гренадёра
     // два залпа в один тик: второй снаряд летит в уже разрушенную башню
     s.spawn('grenadier', 2, 0)
     s.battle.step(60)
@@ -173,7 +185,7 @@ describe('разрушение', () => {
       { type: 'towerDestroyed', towerId: t.id, x: 3.5, y: 1.5 },
     ])
     expect(s.of('towerDamaged')).toHaveLength(1)
-    expect(s.of('towerDamaged')[0]!.amount).toBeLessThan(12)
+    expect(s.of('towerDamaged')[0]!.amount).toBeLessThan(ENEMIES.grenadier.towerAttack.damage)
     expect(s.battle.state.projectiles.filter((p) => p.hostile)).toEqual([])
     // руины не цель и не стреляют; клетка занята, продать нельзя
     const firedBefore = s.of('enemyFired').length
@@ -216,8 +228,8 @@ describe('HP: ранг, улучшение, самолечение, продаж
     expect(t.rank).toBeGreaterThanOrEqual(1)
     expect(t.maxHp).toBe(towerMaxHp('machineGun', 1, t.rank))
     // +разница максимумов и немного самолечения нового ранга
-    expect(t.hp).toBeGreaterThanOrEqual(100 + (t.maxHp - 140))
-    expect(t.hp).toBeLessThan(100 + (t.maxHp - 140) + 10)
+    expect(t.hp).toBeGreaterThanOrEqual(100 + (t.maxHp - MG_HP))
+    expect(t.hp).toBeLessThan(100 + (t.maxHp - MG_HP) + 10)
   })
 
   it('завершение улучшения полностью лечит', () => {
@@ -227,7 +239,7 @@ describe('HP: ранг, улучшение, самолечение, продаж
     s.battle.dispatch({ type: 'upgradeTower', towerId: t.id })
     s.battle.step(upgradeTicks('machineGun', 1) + 2)
     expect(t.level).toBe(2)
-    expect(t).toMatchObject({ hp: 180, maxHp: 180 })
+    expect(t).toMatchObject({ hp: TOWERS.machineGun.levels[1].hp, maxHp: TOWERS.machineGun.levels[1].hp })
   })
 
   it('продажа повреждённой башни возвращает то же, что целой', () => {

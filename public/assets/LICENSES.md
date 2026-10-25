@@ -32,3 +32,7 @@ Quaternius Animated Tanks (CC0, Google Drive) не использован: ав�
 ## Оригинальные 3D-модели проекта — `models/` (CC0 1.0)
 
 tower_machinegun.glb, tower_rocket.glb (`tools/models/build_towers.py`), enemy_grunt.glb, enemy_grenadier.glb, enemy_drone.glb, deco_ruin.glb — оригинальные работы проекта, смоделированы скриптами Blender (`tools/models/pehota/*.py`) из примитивов. Лицензия CC0 1.0, внешних ассетов и заимствованных форм нет.
+
+## PWA-иконки — `public/icons/` (CC0 1.0)
+
+icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png — оригинальный вымышленный силуэт башни, SVG в `tools/pwa/build-icons.mjs`. Внешних ассетов нет.

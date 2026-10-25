@@ -13,6 +13,7 @@ import {
   PlaneGeometry,
   Quaternion,
   Scene,
+  SphereGeometry,
   Vector3,
   WebGLRenderer,
 } from 'three'
@@ -29,7 +30,7 @@ import { BUILD_COLOR, UPGRADE_COLOR, createHud } from './three/hud'
 import { attachInput3d } from './three/input3d'
 import { createPathArrows } from './three/pathArrows'
 import { createModels, PAD_H } from './three/models'
-import { DECO_GLB, ENEMY_GLB, TOWER_GLB } from './three/modelConfig'
+import { DECO_GLB, ENEMY_GLB, RUINS_GLB, TOWER_GLB } from './three/modelConfig'
 import { buildWorld } from './three/world'
 
 const ENEMY_CAP = 256
@@ -58,6 +59,7 @@ const STRIDE = 0.6
 interface ProjRec {
   missile: Mesh
   bullet: Mesh
+  shell: Mesh
   lx: number
   ly: number
   lz: number
@@ -110,6 +112,7 @@ export function createThreeBattle(
   let alive = true
   const glbFiles = [
     ...Object.values(TOWER_GLB),
+    ...Object.values(RUINS_GLB),
     ...Object.values(ENEMY_GLB),
     ...Object.values(DECO_GLB),
   ]
@@ -157,6 +160,9 @@ export function createThreeBattle(
 
   const missileGeo = track(new ConeGeometry(0.08, 0.35, 8).rotateX(Math.PI / 2))
   const bulletGeo = track(new BoxGeometry(0.03, 0.03, 0.28))
+  // снаряд врага: оранжевая сфера, заметно отличается от белой ракеты и жёлтой пули
+  const shellGeo = track(new SphereGeometry(0.1, 8, 6))
+  const shellMat = track(new MeshBasicMaterial({ color: 0xff6a2a }))
   const missileMat = track(new MeshBasicMaterial({ color: 0xffffff }))
   const bulletMat = track(new MeshBasicMaterial({ color: 0xffe08a }))
 
@@ -175,8 +181,9 @@ export function createThreeBattle(
   function newProj(): ProjRec {
     const missile = new Mesh(missileGeo, missileMat)
     const bullet = new Mesh(bulletGeo, bulletMat)
-    scene.add(missile, bullet)
-    return { missile, bullet, lx: 0, ly: 0, lz: 0, seen: 0 }
+    const shell = new Mesh(shellGeo, shellMat)
+    scene.add(missile, bullet, shell)
+    return { missile, bullet, shell, lx: 0, ly: 0, lz: 0, seen: 0 }
   }
 
   function syncProjectile(p: ProjectileState, alpha: number) {
@@ -185,6 +192,7 @@ export function createThreeBattle(
       r = projPool.pop() ?? newProj()
       r.missile.visible = p.kind === 'rocket'
       r.bullet.visible = p.kind === 'bullet'
+      r.shell.visible = p.kind === 'shell'
       r.lx = p.fromX
       r.ly = p.fromY
       r.lz = p.fromZ
@@ -195,7 +203,7 @@ export function createThreeBattle(
     const t = Math.min(1, Math.max(0, p.t - p.dt * (1 - alpha)))
     const q = projectilePosition(p, t)
     const q2 = projectilePosition(p, Math.min(1, t + 0.02))
-    const body = p.kind === 'rocket' ? r.missile : r.bullet
+    const body = p.kind === 'rocket' ? r.missile : p.kind === 'shell' ? r.shell : r.bullet
     body.position.set(q.x, q.z, q.y)
     body.lookAt(q2.x, q2.z, q2.y)
     // след ракеты: дымок каждые TRAIL_STEP клетки пути
@@ -224,8 +232,10 @@ export function createThreeBattle(
           if (p.id === e.projectileId) fx.spawn('flash', p.fromX, p.fromZ, p.fromY)
       }),
       battle0.on('projectileImpact', (e) =>
-        fx.spawn(e.kind === 'rocket' ? 'explosion' : 'spark', e.x, e.z, e.y),
+        fx.spawn(e.kind === 'bullet' ? 'spark' : 'explosion', e.x, e.z, e.y),
       ),
+      // руины: вспышка на месте разрушения
+      battle0.on('towerDestroyed', (e) => fx.spawn('explosion', e.x, PAD_H + 0.3, e.y)),
     )
   }
 
@@ -311,7 +321,9 @@ export function createThreeBattle(
       const target = findEnemy(s.enemies, t.targetId)
       if (target) a.yaw = Math.atan2(target.x - t.x, target.y - t.y)
       const k = 1 + 0.1 * (t.level - 1)
-      if (t.phase === 'queued') {
+      if (t.phase === 'ruins') {
+        models.place(models.ruins[t.type], t.x, PAD_H, t.y, 0, 0, k)
+      } else if (t.phase === 'queued') {
         // приглушённая модель + спиннер «ждёт кредитов» на высоте кольца прогресса
         models.place(models.ghosts[t.type], t.x, PAD_H, t.y, 0, a.yaw, k)
         hud.waiting(t.x, PAD_H + RING_Y, t.y, frameNo / 30)
@@ -331,8 +343,12 @@ export function createThreeBattle(
           t.phase === 'building' ? BUILD_COLOR : UPGRADE_COLOR,
         )
       }
+      const isRuins = t.phase === 'ruins'
       hud.chevrons(t.x, PAD_H + 0.8, t.y, t.rank)
-      if (t.id === session.selectedTowerId) {
+      const isSel = t.id === session.selectedTowerId
+      // полоска HP: у повреждённой и у выбранной башни; у руин не нужна
+      if (!isRuins && (t.hp < t.maxHp || isSel)) hud.bar(t.x, PAD_H + 1.05, t.y, t.hp / t.maxHp)
+      if (isSel && !isRuins) {
         selected = towerStats(t.type, t.level, t.rank).range
         hud.ring(t.x, t.y, selected)
       }
@@ -394,7 +410,7 @@ export function createThreeBattle(
     const ho = selected === null ? input.hoverObj() : null
     if (ho?.kind === 'tower') {
       const t = s.towers.find((x) => x.id === ho.id)
-      if (t) {
+      if (t && t.phase !== 'ruins') {
         selected = towerStats(t.type, t.level, t.rank).range
         hud.ring(t.x, t.y, selected)
       }
@@ -414,7 +430,7 @@ export function createThreeBattle(
     }
     for (const [id, r] of projs) {
       if (r.seen === frameNo) continue
-      r.missile.visible = r.bullet.visible = false
+      r.missile.visible = r.bullet.visible = r.shell.visible = false
       projs.delete(id)
       projPool.push(r)
     }

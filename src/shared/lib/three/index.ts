@@ -25,4 +25,12 @@ export {
   type PickTarget,
   type PickRay,
 } from './pick'
+export {
+  pickQuality,
+  scaleCount,
+  QUALITY_PROFILES,
+  type QualityProfile,
+  type QualityLevel,
+  type QualityEnv,
+} from './quality'
 export { loadGlbParts, type GlbPart } from './loadModels'

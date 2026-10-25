@@ -9,6 +9,7 @@ const fakeTarget = () => {
     removeEventListener: (t: string, f: Fn) => m.get(t)?.delete(f),
     getBoundingClientRect: () => ({ left: 10, top: 20 }),
     setPointerCapture: () => {},
+    style: {} as Record<string, string>,
     fire: (t: string, e: object) => m.get(t)?.forEach((f) => f(e)),
     count: () => [...m.values()].reduce((n, s) => n + s.size, 0),
   }
@@ -67,6 +68,40 @@ describe('attachCameraControls3d', () => {
     expect(rig.zoomAt).toHaveBeenCalledWith(2, 200, 100)
     expect(rig.panByPixels).not.toHaveBeenCalled()
     expect(ctl.isDragging()).toBe(true)
+  })
+
+  it('pinch зумит к центру жеста, тап после pinch проходит', () => {
+    const { el, rig, ctl } = setup()
+    el.fire('pointerdown', ptr(1, 100, 100))
+    el.fire('pointerdown', ptr(2, 100, 200))
+    el.fire('pointermove', ptr(2, 100, 300))
+    expect(rig.zoomAt).toHaveBeenCalledWith(2, 100, 200)
+    el.fire('pointerup', ptr(2, 100, 300))
+    el.fire('pointerup', ptr(1, 100, 100))
+    el.fire('pointerdown', ptr(3, 50, 50))
+    expect(ctl.isDragging()).toBe(false)
+    el.fire('pointermove', ptr(3, 52, 51))
+    expect(rig.panByPixels).not.toHaveBeenCalled()
+  })
+
+  it('pointercancel сбрасывает pinch, dragged и палец', () => {
+    const { el, rig, ctl } = setup()
+    el.fire('pointerdown', ptr(1, 100, 100))
+    el.fire('pointerdown', ptr(2, 200, 100))
+    el.fire('pointercancel', ptr(1, 100, 100))
+    el.fire('pointercancel', ptr(2, 200, 100))
+    expect(ctl.isDragging()).toBe(false)
+    el.fire('pointermove', ptr(2, 400, 100))
+    expect(rig.zoomAt).not.toHaveBeenCalled()
+    expect(rig.panByPixels).not.toHaveBeenCalled()
+  })
+
+  it('touch-action: none и contextmenu погашен', () => {
+    const { el } = setup()
+    expect(el.style.touchAction).toBe('none')
+    const preventDefault = vi.fn()
+    el.fire('contextmenu', { preventDefault })
+    expect(preventDefault).toHaveBeenCalled()
   })
 
   it('WASD, Q/E не поворачивают; WASD двигает в tick, keysEnabled=false глушит', () => {

@@ -105,9 +105,21 @@ body,
   overflow: hidden;
 }
 
+/* 100dvh — высота без учёта выезжающей адресной строки мобильных браузеров */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #app {
+    height: 100dvh;
+  }
+}
+
 body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
 }
 
 @media (min-width: 1600px) {

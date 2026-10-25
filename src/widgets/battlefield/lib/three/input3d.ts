@@ -53,16 +53,19 @@ export function attachInput3d(
     enemyId = null
   }
 
-  const towerTargets = (): PickTarget[] =>
-    session.battle!.state.towers.map((t) => ({
-      id: t.id,
-      x: t.x,
-      y: t.y,
-      z: PAD_H,
-      radius: TOWER_PICK_RADIUS,
-      height: TOWER_PICK_HEIGHT,
-      touchMargin: TOWER_PICK_TOUCH_MARGIN,
-    }))
+  // руины выбираются кликом, но hover не ловят (withRuins=false)
+  const towerTargets = (withRuins = true): PickTarget[] =>
+    session
+      .battle!.state.towers.filter((t) => withRuins || t.phase !== 'ruins')
+      .map((t) => ({
+        id: t.id,
+        x: t.x,
+        y: t.y,
+        z: PAD_H,
+        radius: TOWER_PICK_RADIUS,
+        height: TOWER_PICK_HEIGHT,
+        touchMargin: TOWER_PICK_TOUCH_MARGIN,
+      }))
   const enemyTargets = (): PickTarget[] =>
     session.battle!.state.enemies.map((en) => ({
       id: en.id,
@@ -87,7 +90,7 @@ export function attachInput3d(
     // в режиме постройки подсветка объектов не нужна: ghost следует за клеткой
     if (session.battle && !session.buildType && !controls.isDragging()) {
       const ray = rig.rayAt(p.x, p.y)
-      const tid = pickTarget(ray, towerTargets())
+      const tid = pickTarget(ray, towerTargets(false))
       if (tid !== null) hoverObj = { kind: 'tower', id: tid }
       else {
         const eid = pickTarget(ray, enemyTargets())

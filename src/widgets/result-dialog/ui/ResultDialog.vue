@@ -83,12 +83,16 @@ watch(
   z-index: 90;
   display: grid;
   place-items: center;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: rgb(0 0 0 / 55%);
   animation: ui-fade-in 0.2s var(--ease);
   pointer-events: auto;
 }
 .dialog {
   width: min(300px, 90vw);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px 20px;
   text-align: center;
   animation: ui-pop-in 0.35s var(--ease);

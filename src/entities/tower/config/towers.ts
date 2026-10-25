@@ -50,9 +50,9 @@ export const TOWERS = {
     buildSeconds: 1.5,
     upgradeSeconds: [3, 5],
     levels: [
-      { cost: 100, damage: 7, reload: 0.25, range: 3.5, hp: 140 },
-      { cost: 90, damage: 12, reload: 0.22, range: 3.75, hp: 180 },
-      { cost: 140, damage: 16, reload: 0.2, range: 4, hp: 230 },
+      { cost: 100, damage: 7, reload: 0.25, range: 3.5, hp: 200 },
+      { cost: 90, damage: 12, reload: 0.22, range: 3.75, hp: 260 },
+      { cost: 140, damage: 16, reload: 0.2, range: 4, hp: 330 },
     ],
   },
   rocket: {
@@ -66,9 +66,9 @@ export const TOWERS = {
     buildSeconds: 2,
     upgradeSeconds: [3, 5],
     levels: [
-      { cost: 175, damage: 45, reload: 1.2, range: 4, hp: 180 },
-      { cost: 140, damage: 70, reload: 1.1, range: 4.5, hp: 240 },
-      { cost: 200, damage: 105, reload: 1, range: 5, hp: 300 },
+      { cost: 175, damage: 45, reload: 1.2, range: 4, hp: 260 },
+      { cost: 140, damage: 70, reload: 1.1, range: 4.5, hp: 340 },
+      { cost: 200, damage: 105, reload: 1, range: 5, hp: 430 },
     ],
   },
 } as const satisfies Record<TowerType, TowerConfig>
@@ -103,11 +103,11 @@ export const SELL_REFUND_RATIO = 0.7
 // окно бесплатной отмены: столько секунд после оплаты возврат 100% даже во время волны
 export const FREE_REFUND_SECONDS = 5
 
-// ремонт, восстановление, авторемонт (SPEC §4.3); стартовые числа, итог подбирает D5
+// ремонт, восстановление, авторемонт (SPEC §4.3); числа подобраны D5 (008): эталон проходит с HP штаба 14, случайные боты 13/50
 // доля вложений за полный ремонт (цена пропорциональна недостающему HP)
-export const REPAIR_COST_RATIO = 0.35
+export const REPAIR_COST_RATIO = 0.25
 export const REPAIR_SECONDS = 4
 // доля максимума HP в секунду вне волны
-export const AUTO_REPAIR_PER_SEC = 0.1
+export const AUTO_REPAIR_PER_SEC = 0.15
 // доля вложений за восстановление руин
-export const RESTORE_COST_RATIO = 0.6
+export const RESTORE_COST_RATIO = 0.4

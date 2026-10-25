@@ -5,8 +5,10 @@ import {
   REPAIR_COST_RATIO,
   REPAIR_SECONDS,
   RESTORE_COST_RATIO,
+  TOWERS,
   buildTicks,
   repairCost,
+  towerMaxHp,
 } from '@/entities/tower/@x/battle'
 import { TICK_RATE } from '@/shared/config'
 import { hashState } from '@/shared/lib/sim'
@@ -30,6 +32,10 @@ const level: LevelData = {
   hq: { x: 24, y: 2.5 },
 }
 const MG = 100
+const MAX_HP = TOWERS.machineGun.levels[0].hp
+const HALF = MAX_HP / 2
+const RESTORE = Math.ceil(RESTORE_COST_RATIO * MG)
+const REPAIR_HALF = repairCost(MG, HALF, MAX_HP)
 const TYPES = [
   'towerRepairStarted',
   'towerRepaired',
@@ -75,27 +81,29 @@ function setup() {
 
 describe('ремонт: цена', () => {
   it('на границах: 1 HP, половина, почти полное', () => {
-    expect(repairCost(MG, 139, 140)).toBe(1)
-    expect(repairCost(MG, 70, 140)).toBe(Math.ceil(REPAIR_COST_RATIO * MG * 0.5))
-    expect(repairCost(MG, 1, 140)).toBe(Math.ceil((REPAIR_COST_RATIO * MG * 139) / 140))
-    expect(repairCost(MG, 140, 140)).toBe(0)
+    expect(repairCost(MG, MAX_HP - 1, MAX_HP)).toBe(1)
+    expect(repairCost(MG, HALF, MAX_HP)).toBe(Math.ceil(REPAIR_COST_RATIO * MG * 0.5))
+    expect(repairCost(MG, 1, MAX_HP)).toBe(
+      Math.ceil((REPAIR_COST_RATIO * MG * (MAX_HP - 1)) / MAX_HP),
+    )
+    expect(repairCost(MG, MAX_HP, MAX_HP)).toBe(0)
   })
 
   it('списывается сразу, снимок показывает цену', () => {
     const s = setup()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     s.battle.step()
-    expect(s.tower.repairCost).toBe(18)
+    expect(s.tower.repairCost).toBe(REPAIR_HALF)
     const money = s.battle.state.money
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
-    expect(s.battle.state.money).toBe(money - 18)
-    expect(s.of('towerRepairStarted')[0]).toMatchObject({ cost: 18 })
+    expect(s.battle.state.money).toBe(money - REPAIR_HALF)
+    expect(s.of('towerRepairStarted')[0]).toMatchObject({ cost: REPAIR_HALF })
     expect(s.tower.repairCost).toBe(0)
   })
 
   it('нет денег — отказ, в очередь не ставится', () => {
     const s = setup()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     s.battle.state.money = 5
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
     expect(s.reasons()).toEqual(['notEnoughMoney'])
@@ -111,14 +119,14 @@ describe('ремонт: ход', () => {
   it('во время волны лечит за REPAIR_SECONDS, башня стреляет', () => {
     const s = setup()
     s.startWave()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     const shots = s.of('projectileFired').length
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
     s.battle.step((REPAIR_SECONDS * TICK_RATE) / 2)
     expect(s.tower.repairProgress).toBeCloseTo(0.5, 1)
-    expect(Math.abs(s.tower.hp - 105)).toBeLessThan(1)
+    expect(Math.abs(s.tower.hp - (HALF + MAX_HP) / 2)).toBeLessThan(1)
     s.battle.step(REPAIR_SECONDS * TICK_RATE)
-    expect(s.tower.hp).toBeCloseTo(140, 3)
+    expect(s.tower.hp).toBeCloseTo(MAX_HP, 3)
     expect(s.tower.repairProgress).toBeNull()
     expect(s.of('towerRepaired')).toHaveLength(1)
     expect(s.of('projectileFired').length).toBeGreaterThan(shots)
@@ -129,7 +137,7 @@ describe('ремонт: ход', () => {
     const s = setup()
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
     s.startWave()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
     s.dispatch({ type: 'placeTower', towerType: 'machineGun', cell: { x: 6, y: 1 } })
@@ -147,9 +155,14 @@ describe('ремонт: ход', () => {
     // ждём, пока танк почти перезарядится, чтобы ремонт не успел поднять HP выше его выстрела
     const tank = s.battle.state.enemies.find((e) => e.type === 'tank')!
     for (let i = 0; i < 100 && tank.towerCooldown > 2; i++) s.battle.step()
-    s.tower.hp = 10
+    s.tower.hp = 1
     s.dispatch({ type: 'repairTower', towerId: s.tower.id })
-    s.battle.step(60)
+    // пока снаряд летит, держим HP ниже урона танка: ремонт не должен успеть его перебить
+    for (let i = 0; i < 60; i++) {
+      if (s.battle.state.projectiles.some((p) => p.hostile) && s.tower.phase === 'active')
+        s.tower.hp = 1
+      s.battle.step()
+    }
     expect(s.tower.phase).toBe('ruins')
     expect(s.tower.repairTicksLeft).toBe(0)
     expect(s.tower.repairProgress).toBeNull()
@@ -162,9 +175,9 @@ describe('ремонт: ход', () => {
 describe('авторемонт и самолечение', () => {
   it('вне волны лечит AUTO_REPAIR_PER_SEC в секунду, во время волны нет', () => {
     const s = setup()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     s.battle.step(TICK_RATE)
-    expect(s.tower.hp).toBeCloseTo(70 + 140 * AUTO_REPAIR_PER_SEC, 3)
+    expect(s.tower.hp).toBeCloseTo(HALF + MAX_HP * AUTO_REPAIR_PER_SEC, 3)
     s.startWave()
     const hp = s.tower.hp
     s.battle.step(TICK_RATE)
@@ -181,13 +194,13 @@ describe('авторемонт и самолечение', () => {
   it('герой лечится по рангу и во время волны, рядовой нет', () => {
     const s = setup()
     s.startWave()
-    s.tower.hp = 70
+    s.tower.hp = HALF
     s.battle.step(TICK_RATE)
-    expect(s.tower.hp).toBe(70)
+    expect(s.tower.hp).toBe(HALF)
     s.tower.rank = 3
-    s.tower.maxHp = 196
+    s.tower.maxHp = towerMaxHp('machineGun', 1, 3)
     s.battle.step(TICK_RATE)
-    expect(s.tower.hp).toBeGreaterThan(70 + 3)
+    expect(s.tower.hp).toBeGreaterThan(HALF + 3)
   })
 })
 
@@ -215,12 +228,12 @@ describe('восстановление руин', () => {
     s.dispatch({ type: 'placeTower', towerType: 'machineGun', cell: { x: 6, y: 1 } })
     s.dispatch({ type: 'restoreTower', towerId: s.tower.id })
     expect(s.of('towerRestoreOrdered')[0]!.waiting).toBe(true)
-    // денег хватает на восстановление (60), но не на постройку (100) — первой в очереди
-    s.battle.state.money = 60
+    // денег хватает на восстановление (RESTORE), но не на постройку (100) — первой в очереди
+    s.battle.state.money = RESTORE
     s.battle.step(3)
     expect(s.tower.phase).toBe('ruins')
     expect(s.tower.restoreOrder).not.toBeNull()
-    s.battle.state.money = 100 + 60
+    s.battle.state.money = 100 + RESTORE
     s.battle.step(3)
     expect(s.battle.state.towers[1]!.phase).toBe('building')
     expect(s.tower.phase).toBe('building')
@@ -238,9 +251,9 @@ describe('восстановление руин', () => {
     expect(s.tower).toMatchObject({ phase: 'ruins', restoreOrder: null, rank: 2 })
     s.battle.state.money = 500
     s.dispatch({ type: 'restoreTower', towerId: s.tower.id })
-    expect(s.battle.state.money).toBe(440)
+    expect(s.battle.state.money).toBe(500 - RESTORE)
     s.dispatch({ type: 'cancelBuild', towerId: s.tower.id })
-    expect(s.of('towerRestoreCancelled')[1]).toMatchObject({ refund: 60 })
+    expect(s.of('towerRestoreCancelled')[1]).toMatchObject({ refund: RESTORE })
     expect(s.battle.state.money).toBe(500)
     expect(s.tower).toMatchObject({ phase: 'ruins', invested: MG, restoring: false })
     expect(s.reasons()).toEqual(['alreadyRestoring'])
@@ -293,10 +306,15 @@ describe('реплей', () => {
     battle.dispatch({ type: 'startWave' })
     battle.dispatch({ type: 'spawnEnemies', enemyType: 'boss', count: 3, spacing: 1 })
     // ждём, пока боссы разрушат башню
+    // чиним один раз: непрерывный ремонт быстрее урона боссов и башня не упала бы
+    let repaired = false
     for (let i = 0; i < 1500 && !battle.state.towers.some((t) => t.phase === 'ruins'); i++) {
       battle.step()
       const hurt = battle.state.towers.find((t) => t.repairCost > 0 && t.repairTicksLeft === 0)
-      if (hurt) battle.dispatch({ type: 'repairTower', towerId: hurt.id })
+      if (hurt && !repaired) {
+        battle.dispatch({ type: 'repairTower', towerId: hurt.id })
+        repaired = true
+      }
     }
     const ruins = battle.state.towers.find((t) => t.phase === 'ruins')!
     expect(ruins).toBeDefined()

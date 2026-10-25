@@ -59,6 +59,7 @@ onBeforeUnmount(() => {
   z-index: 80;
   display: grid;
   place-items: center;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: rgb(0 0 0 / 55%);
   animation: ui-fade-in 0.2s var(--ease);
   pointer-events: auto;
@@ -68,6 +69,9 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 8px;
   width: min(260px, 90vw);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: ui-pop-in 0.25s var(--ease);
 }
 h2 {

@@ -62,7 +62,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 50vw;
+  max-width: min(50vw, calc(100vw - var(--safe-left) - var(--safe-right) - 2 * var(--pad)));
   padding: 4px 8px;
   font-size: var(--fs-sm);
   background: var(--panel-bg);

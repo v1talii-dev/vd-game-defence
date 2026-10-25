@@ -11,6 +11,10 @@ export const TOWER_GLB = {
   machineGun: s('tower_machinegun'),
   rocket: s('tower_rocket'),
 }
+export const RUINS_GLB = {
+  machineGun: s('ruins_machinegun'),
+  rocket: s('ruins_rocket'),
+}
 export const ENEMY_GLB = {
   grunt: s('enemy_grunt'),
   grenadier: s('enemy_grenadier'),

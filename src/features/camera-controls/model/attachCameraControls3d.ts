@@ -90,6 +90,19 @@ export function attachCameraControls3d(
       downY = p.y
     }
   }
+  // система отобрала жест: сбрасываем всё, чтобы не осталось «залипшего» пальца
+  const onCancel = (e: PointerEvent) => {
+    pointers.delete(e.pointerId)
+    pinchDist = 0
+    if (pointers.size === 0) dragged = false
+    else if (pointers.size === 1) {
+      const p = [...pointers.values()][0]!
+      downX = p.x
+      downY = p.y
+    }
+  }
+  // долгое нажатие и правая кнопка не открывают системное меню
+  const onContextMenu = (e: Event) => e.preventDefault()
   const onWheel = (e: WheelEvent) => {
     e.preventDefault()
     const p = local(e)
@@ -109,7 +122,9 @@ export function attachCameraControls3d(
   el.addEventListener('pointerdown', onDown as EventListener)
   el.addEventListener('pointermove', onMove as EventListener)
   el.addEventListener('pointerup', onUp as EventListener)
-  el.addEventListener('pointercancel', onUp as EventListener)
+  el.addEventListener('pointercancel', onCancel as EventListener)
+  el.addEventListener('contextmenu', onContextMenu)
+  el.style.touchAction = 'none'
   el.addEventListener('wheel', onWheel as EventListener, { passive: false })
   keyTarget.addEventListener('keydown', onKeyDown)
   keyTarget.addEventListener('keyup', onKeyUp)
@@ -131,7 +146,8 @@ export function attachCameraControls3d(
       el.removeEventListener('pointerdown', onDown as EventListener)
       el.removeEventListener('pointermove', onMove as EventListener)
       el.removeEventListener('pointerup', onUp as EventListener)
-      el.removeEventListener('pointercancel', onUp as EventListener)
+      el.removeEventListener('pointercancel', onCancel as EventListener)
+      el.removeEventListener('contextmenu', onContextMenu)
       el.removeEventListener('wheel', onWheel as EventListener)
       keyTarget.removeEventListener('keydown', onKeyDown)
       keyTarget.removeEventListener('keyup', onKeyUp)

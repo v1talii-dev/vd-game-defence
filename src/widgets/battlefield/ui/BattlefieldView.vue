@@ -97,6 +97,12 @@ onBeforeUnmount(() => {
 .canvas {
   width: 100%;
   height: 100%;
+  /* жесты камеры обрабатываем сами: браузер не скроллит и не зумит страницу */
+  touch-action: none;
+}
+.canvas :deep(canvas) {
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 .error {
   position: absolute;

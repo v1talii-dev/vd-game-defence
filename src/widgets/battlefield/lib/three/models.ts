@@ -20,7 +20,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { EnemyType } from '@/entities/enemy'
 import type { TowerType } from '@/entities/tower'
 import type { GlbPart } from '@/shared/lib/three'
-import { ENEMY_GLB, HEAD_NODES, TOWER_GLB, type GlbSpec } from './modelConfig'
+import { ENEMY_GLB, HEAD_NODES, RUINS_GLB, TOWER_GLB, type GlbSpec } from './modelConfig'
 
 type V3 = readonly [number, number, number]
 
@@ -159,6 +159,16 @@ export function createModels(scene: Scene, disposables: Disposables) {
     rocket: build(towerSpecs.rocket, TOWER_CAP, ghostMat),
   }
 
+  // руины: приплюснутая тёмная груда; заменяется моделью ruins_*.glb
+  const ruinSpecs: PartSpec[] = [
+    { geo: box(0.7, 0.14, 0.7), color: 0x3a3330, pos: [0, 0.07, 0] },
+    { geo: box(0.3, 0.12, 0.25), color: 0x2a2523, pos: [0.1, 0.2, -0.05], rot: [0, 0.5, 0.2] },
+  ]
+  const ruins: Record<TowerType, Model> = {
+    machineGun: build(ruinSpecs, TOWER_CAP),
+    rocket: build(ruinSpecs, TOWER_CAP),
+  }
+
   const gunGeo = box(0.08, 0.08, 0.6)
   const enemies: Record<EnemyType, Model> = {
     // пехота — капсулы
@@ -219,6 +229,7 @@ export function createModels(scene: Scene, disposables: Disposables) {
   const all: Model[] = [
     ...Object.values(towers),
     ...Object.values(ghosts),
+    ...Object.values(ruins),
     ...Object.values(enemies),
   ]
 
@@ -256,6 +267,7 @@ export function createModels(scene: Scene, disposables: Disposables) {
   return {
     towers,
     ghosts,
+    ruins,
     enemies,
     applyGlbs(loaded: Map<string, GlbPart[]>) {
       const mat = new MeshLambertMaterial({ vertexColors: true })
@@ -264,6 +276,8 @@ export function createModels(scene: Scene, disposables: Disposables) {
         applyGlb(towers[k as TowerType], spec, loaded.get(spec.file), mat)
         applyGlb(ghosts[k as TowerType], spec, loaded.get(spec.file), ghostMat)
       }
+      for (const [k, spec] of Object.entries(RUINS_GLB))
+        applyGlb(ruins[k as TowerType], spec, loaded.get(spec.file), mat)
       for (const [k, spec] of Object.entries(ENEMY_GLB))
         applyGlb(enemies[k as EnemyType], spec, loaded.get(spec.file), mat)
     },
