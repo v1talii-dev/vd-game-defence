@@ -162,6 +162,12 @@ export function attachInput3d(
       const t = session.battle?.state.towers.find((t) => t.id === id)
       const cancelIt = t?.phase === 'upgrading' || t?.upgradeOrder != null
       session.dispatch({ type: cancelIt ? 'cancelUpgrade' : 'upgradeTower', towerId: id })
+    } else if (is('repair') && id !== null) {
+      const tower = session.battle?.state.towers.find((t) => t.id === id)
+      session.dispatch({
+        type: tower?.phase === 'ruins' ? 'restoreTower' : 'repairTower',
+        towerId: id,
+      })
     } else if (is('sell') && id !== null) session.dispatch({ type: 'sellTower', towerId: id })
     else if (is('prevTower') || is('nextTower')) {
       // только выбор: камера не двигается

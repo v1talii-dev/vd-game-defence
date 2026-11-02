@@ -2,7 +2,14 @@ import { defineStore } from 'pinia'
 import { markRaw, ref, shallowRef } from 'vue'
 import { TICK_RATE } from '@/shared/config'
 import type { LevelData } from '@/entities/level'
-import { TOWERS, TOWER_TYPES, upgradeCost, type TowerState, type TowerType } from '@/entities/tower'
+import {
+  TOWERS,
+  TOWER_TYPES,
+  restoreCost,
+  upgradeCost,
+  type TowerState,
+  type TowerType,
+} from '@/entities/tower'
 import { createBattle } from '../model/battle'
 import { recordCommands, type Replay } from '../model/replay'
 import type {
@@ -24,7 +31,7 @@ export type GameSpeed = 1 | 2 | 8
 export interface QueueOrder {
   towerId: number
   type: TowerType
-  kind: 'build' | 'upgrade'
+  kind: 'build' | 'upgrade' | 'restore'
   status: 'waiting' | 'working'
   // порядок сортировки (идущие — -1, ждущие — номер заказа)
   key: number
@@ -40,6 +47,8 @@ export const useBattleSession = defineStore('battleSession', () => {
   let recorder: ReturnType<typeof recordCommands> | null = null
   let accumulator = 0
   let progressSlot = -1
+  let towerDamageChanged = false
+  let restoreOrderChanged = false
 
   // счётчик заказов без денег (для тоста)
   const queuedOrders = ref(0)
@@ -62,7 +71,8 @@ export const useBattleSession = defineStore('battleSession', () => {
   const hoveredBuildType = ref<TowerType | null>(null)
   const selectedTowerId = ref<number | null>(null)
   // копия выбранной башни для панели; обновляется по событиям
-  const selectedTower = ref<TowerState | null>(null)
+  const selectedTower = ref<(TowerState & { restoreCost: number }) | null>(null)
+  const destroyedTowers = ref(0)
   // выбранная на тач-экране клетка под постройку, ждёт подтверждения
   const pendingCell = ref<Cell | null>(null)
   const lastRejected = ref<{ reason: RejectReason; at: number } | null>(null)
@@ -73,7 +83,9 @@ export const useBattleSession = defineStore('battleSession', () => {
 
   function syncSelected() {
     const t = battle.value?.state.towers.find((x) => x.id === selectedTowerId.value)
-    selectedTower.value = t ? { ...t, cell: { ...t.cell } } : null
+    selectedTower.value = t
+      ? { ...t, cell: { ...t.cell }, restoreCost: restoreCost(t.invested) }
+      : null
     if (!t) selectedTowerId.value = null
   }
 
@@ -84,6 +96,19 @@ export const useBattleSession = defineStore('battleSession', () => {
     for (const t of battle.value?.state.towers ?? []) {
       const base = { towerId: t.id, type: t.type }
       if (t.phase === 'active' && t.upgradeOrder === null) continue
+      if (t.phase === 'ruins') {
+        if (t.restoreOrder !== null)
+          list.push({
+            ...base,
+            kind: 'restore',
+            status: 'waiting',
+            key: t.restoreOrder,
+            toLevel: t.level,
+            progress: 0,
+            cost: restoreCost(t.invested),
+          })
+        continue
+      }
       if (t.phase === 'queued')
         list.push({
           ...base,
@@ -97,7 +122,7 @@ export const useBattleSession = defineStore('battleSession', () => {
       else if (t.phase === 'building')
         list.push({
           ...base,
-          kind: 'build',
+          kind: t.restoring ? 'restore' : 'build',
           status: 'working',
           key: -1,
           toLevel: 1,
@@ -156,6 +181,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTower.value = null
     lastRejected.value = null
     queuedOrders.value = 0
+    destroyedTowers.value = 0
     orders.value = []
     pendingCell.value = null
     syncWave()
@@ -167,6 +193,9 @@ export const useBattleSession = defineStore('battleSession', () => {
     b.on('victory', () => (outcome.value = b.state.outcome))
     b.on('defeat', () => (outcome.value = b.state.outcome))
     b.on('commandRejected', (e) => (lastRejected.value = { reason: e.reason, at: b.state.tick }))
+    b.on('towerDestroyed', () => destroyedTowers.value++)
+    b.on('towerDamaged', () => (towerDamageChanged = true))
+    b.on('towerRestoreOrdered', () => (restoreOrderChanged = true))
     // тост «заказ в очереди» — один раз на заказ
     b.on('towerOrdered', (e) => {
       if (e.waiting) queuedOrders.value++
@@ -184,6 +213,13 @@ export const useBattleSession = defineStore('battleSession', () => {
       'towerRankUp',
       'targetPriorityChanged',
       'towerPlaced',
+      'towerDamaged',
+      'towerDestroyed',
+      'towerRepairStarted',
+      'towerRestoreOrdered',
+      'towerRestoreCancelled',
+      'towerRestored',
+      'ruinsCleared',
     ] as const) {
       b.on(type, syncSelected)
       b.on(type, syncOrders)
@@ -196,11 +232,17 @@ export const useBattleSession = defineStore('battleSession', () => {
     if (!b) return
     const before = Math.floor(b.state.tick / TICK_RATE)
     b.step(n)
+    if (towerDamageChanged || restoreOrderChanged) {
+      syncSelected()
+      if (restoreOrderChanged) syncOrders()
+      towerDamageChanged = false
+      restoreOrderChanged = false
+    }
     // таймер паузы между волнами обновляем раз в секунду, а не каждый кадр
     if (Math.floor(b.state.tick / TICK_RATE) !== before) syncWave()
     // прогресс стройки/улучшения выбранной башни — 6 раз в секунду, не каждый кадр
     const working = orders.value.some((o) => o.status === 'working')
-    if (working || (selectedTower.value && selectedTower.value.phase !== 'active')) {
+    if (working || selectedTower.value) {
       const slot = Math.floor(b.state.tick / PROGRESS_SYNC_TICKS)
       if (slot !== progressSlot) {
         syncSelected()
@@ -221,7 +263,10 @@ export const useBattleSession = defineStore('battleSession', () => {
   }
 
   function dispatch(cmd: Command) {
-    battle.value?.dispatch(cmd)
+    if (!battle.value) return
+    battle.value.dispatch(cmd)
+    syncSelected()
+    syncOrders()
   }
 
   function select(towerId: number | null) {
@@ -278,6 +323,7 @@ export const useBattleSession = defineStore('battleSession', () => {
     selectedTower,
     lastRejected,
     queuedOrders,
+    destroyedTowers,
     orders,
     queueCollapsed,
     queueExpanded,

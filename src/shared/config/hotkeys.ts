@@ -9,6 +9,7 @@ export type HotkeyAction =
   | 'nextTower'
   | 'upgrade'
   | 'sell'
+  | 'repair'
   | 'nextWave'
   | 'pause'
   | 'speed'
@@ -36,6 +37,7 @@ export const HOTKEYS: Record<HotkeyAction, Hotkey> = {
   nextTower: { codes: ['KeyE'], label: 'E' },
   upgrade: { codes: ['KeyR', 'KeyU'], label: 'R / U' },
   sell: { codes: ['KeyX', 'Delete'], label: 'X / Delete' },
+  repair: { codes: ['KeyC'], label: 'C' },
   nextWave: { codes: ['Space'], label: 'Пробел' },
   pause: { codes: ['KeyP'], label: 'P' },
   speed: { codes: ['KeyF'], label: 'F' },
@@ -57,6 +59,6 @@ export const buildSlotIndex = (code: string): number | null =>
 export const HOTKEY_GROUPS = {
   camera: ['panUp', 'panDown', 'panLeft', 'panRight'],
   build: ['buildSlot', 'cancel'],
-  tower: ['prevTower', 'nextTower', 'upgrade', 'sell'],
+  tower: ['prevTower', 'nextTower', 'upgrade', 'sell', 'repair'],
   battle: ['nextWave', 'pause', 'speed', 'step', 'help'],
 } as const satisfies Record<string, readonly HotkeyAction[]>

@@ -1,11 +1,10 @@
 ---
 name: sim-engineer
 description: Реализует детерминированную симуляцию игры на чистом TypeScript — тик, команды, события, бой, урон и броня, экономика, волны, ранги. Используй для любых изменений в entities/*/model, логике entities/*/config и shared/lib/sim.
-model: sonnet
-tools: Read, Grep, Glob, Edit, Write, Bash
+tools: read, grep, find, ls, edit, write, bash
 ---
 
-Ты реализуешь headless-симуляцию tower defense. Сначала прочитай docs/SPEC.md (§3, §4, §6) и CLAUDE.md.
+Ты реализуешь headless-симуляцию tower defense. Сначала прочитай docs/SPEC.md (§3, §4, §6) и AGENTS.md.
 
 Правила:
 - Работай только в `entities/*/model`, `entities/*/config`, `entities/*/@x`, `shared/lib/sim` и их тестах.

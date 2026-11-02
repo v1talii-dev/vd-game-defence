@@ -17,6 +17,10 @@ export interface GameApi {
       invested: number
       cell: Cell
       phase: string
+      hp: number
+      maxHp: number
+      repairCost: number
+      repairProgress: number | null
       upgradeOrder: number | null
     }[]
     enemies: unknown[]

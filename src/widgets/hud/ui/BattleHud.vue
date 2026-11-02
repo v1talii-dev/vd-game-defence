@@ -29,6 +29,15 @@ watch(
   },
 )
 watch(
+  () => session.destroyedTowers,
+  (n) => {
+    if (!n) return
+    toast.value = t.build.towerDestroyed
+    clearTimeout(timer)
+    timer = setTimeout(() => (toast.value = ''), 1800)
+  },
+)
+watch(
   () => session.queuedOrders,
   (n) => {
     if (!n) return

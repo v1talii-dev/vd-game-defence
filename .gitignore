@@ -3,13 +3,14 @@ dist/
 test-results/
 playwright-report/
 coverage/
+.vitest/
+*.log
 .env*
 .idea/
 dist-test/
 .playwright-mcp/
 tools/models/_src/
 tmp-shots/
-.claude/worktrees/
 
 __pycache__/
 *.pyc

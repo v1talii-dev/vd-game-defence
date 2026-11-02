@@ -18,7 +18,7 @@ type Order = (typeof session.orders)[number]
 
 function cancel(o: Order) {
   session.dispatch({
-    type: o.kind === 'build' ? 'cancelBuild' : 'cancelUpgrade',
+    type: o.kind === 'upgrade' ? 'cancelUpgrade' : 'cancelBuild',
     towerId: o.towerId,
   })
 }
@@ -97,7 +97,11 @@ function stateText(o: Order) {
             </span>
             <UiIcon :name="o.type" :size="16" class="ico" />
             <span class="lbl">{{
-              o.kind === 'upgrade' ? t.queue.levelShort.replace('{n}', String(o.toLevel)) : ''
+              o.kind === 'upgrade'
+                ? t.queue.levelShort.replace('{n}', String(o.toLevel))
+                : o.kind === 'restore'
+                  ? t.queue.restoreShort
+                  : ''
             }}</span>
             <span class="cost">{{ o.cost }}</span>
           </button>

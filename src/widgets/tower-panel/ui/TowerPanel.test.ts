@@ -19,10 +19,37 @@ const tower = {
   sellRefund: 100,
   cooldown: 0,
   priority: 'first',
-} as TowerState
+  phase: 'active',
+  hp: 100,
+  maxHp: 140,
+  repairCost: 10,
+  repairTicksLeft: 0,
+  repairProgress: null,
+  restoreOrder: null,
+  restoreCost: 60,
+} as TowerState & { restoreCost: number }
 
 describe('TowerPanel', () => {
   beforeEach(() => setActivePinia(createPinia()))
+
+  it('ремонт и действия с руинами отправляют команды', async () => {
+    const s = useBattleSession()
+    s.money = 100
+    s.selectedTower = tower
+    const dispatch = vi.spyOn(s, 'dispatch')
+    const w = mount(TowerPanel)
+    expect(w.get('[data-testid=tower-hp]').text()).toContain('100/140')
+    await w.get('[data-testid=tower-repair]').trigger('click')
+    s.selectedTower = { ...tower, phase: 'ruins' }
+    await w.vm.$nextTick()
+    await w.get('[data-testid=tower-restore]').trigger('click')
+    await w.get('[data-testid=tower-clear]').trigger('click')
+    expect(dispatch.mock.calls.map((c) => c[0].type)).toEqual([
+      'repairTower',
+      'restoreTower',
+      'clearRuins',
+    ])
+  })
 
   it('пуста без выбранной башни', () => {
     expect(mount(TowerPanel).find('[data-testid=tower-panel]').exists()).toBe(false)
@@ -60,7 +87,7 @@ describe('TowerPanel: фазы', () => {
       phaseTicksTotal: 90,
       phaseTicksLeft: 45,
       phasePaid: 50,
-    } as TowerState
+    } as TowerState & { restoreCost: number }
     const dispatch = vi.spyOn(s, 'dispatch')
     const w = mount(TowerPanel)
     expect(w.get('[data-testid=tower-seconds]').text()).toBe('2 с')
@@ -73,7 +100,7 @@ describe('TowerPanel: фазы', () => {
 
   it('заказ в очереди: отмена без прогресса', async () => {
     const s = useBattleSession()
-    s.selectedTower = { ...tower, phase: 'queued', progress: 0 } as TowerState
+    s.selectedTower = { ...tower, phase: 'queued', progress: 0 }
     const dispatch = vi.spyOn(s, 'dispatch')
     const w = mount(TowerPanel)
     expect(w.find('[data-testid=tower-progress]').exists()).toBe(false)
