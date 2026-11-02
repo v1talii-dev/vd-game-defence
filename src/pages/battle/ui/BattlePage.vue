@@ -14,6 +14,8 @@ import { TutorialHints } from '@/widgets/tutorial'
 const props = defineProps<{ levelId: string }>()
 // панель очереди заказов временно отключена по решению пользователя (2026-10-23); виджет и тесты остаются
 const SHOW_ORDER_QUEUE = false
+const battlefield = ref<InstanceType<typeof BattlefieldView> | null>(null)
+const projectTower = (x: number, y: number) => battlefield.value?.cellToScreen(x, y) ?? null
 const helpOpen = ref(false)
 const runKey = ref(0)
 const restart = () => runKey.value++
@@ -21,11 +23,15 @@ const restart = () => runKey.value++
 
 <template>
   <div class="battle">
-    <BattlefieldView :key="`${props.levelId}:${runKey}`" :level-id="props.levelId" />
+    <BattlefieldView
+      ref="battlefield"
+      :key="`${props.levelId}:${runKey}`"
+      :level-id="props.levelId"
+    />
     <div class="ui">
       <BattleHud @help="helpOpen = !helpOpen" />
       <BuildMenu />
-      <TowerPanel />
+      <TowerPanel :project="projectTower" />
       <OrderQueue v-if="SHOW_ORDER_QUEUE" />
       <TutorialHints :key="runKey" />
     </div>

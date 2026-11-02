@@ -18,6 +18,17 @@ const session = useBattleSession()
 let uninstallApi: (() => void) | undefined
 let dispose3d: (() => void) | undefined
 let disposed = false
+let battle3d:
+  Awaited<ReturnType<(typeof import('../lib/three3d'))['createThreeBattle']>> | undefined
+
+defineExpose({
+  cellToScreen(x: number, y: number) {
+    if (!battle3d || !host.value) return null
+    const point = battle3d.rig.cellToScreen({ x, y })
+    const rect = host.value.getBoundingClientRect()
+    return { x: point.x + rect.left, y: point.y + rect.top }
+  },
+})
 
 async function load() {
   failed.value = false
@@ -50,6 +61,7 @@ async function load() {
     onContextLost: () => (glLost.value = true),
     onContextRestored: () => (glLost.value = false),
   })
+  battle3d = b3d
   dispose3d = b3d.dispose
   // ждём первый кадр (GLB, текстуры) — готовность рендера, не симуляции
   const poll = setInterval(() => {
@@ -70,6 +82,7 @@ onBeforeUnmount(() => {
   disposed = true
   uninstallApi?.()
   dispose3d?.()
+  battle3d = undefined
   session.stop()
 })
 </script>

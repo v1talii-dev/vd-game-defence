@@ -1,17 +1,39 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useBattleSession } from '@/entities/battle'
-import {
-  RANKS,
-  sellRefund,
-  towerStats,
-  upgradeCost,
-  upgradeTicks,
-  type TargetPriority,
-} from '@/entities/tower'
+import { RANKS, towerStats, upgradeCost, upgradeTicks, type TargetPriority } from '@/entities/tower'
 import { TICK_RATE } from '@/shared/config'
 import { t } from '@/shared/i18n'
 import { UiButton, UiIcon } from '@/shared/ui'
+
+const props = defineProps<{ project?: (x: number, y: number) => { x: number; y: number } | null }>()
+const panel = ref<HTMLElement | null>(null)
+let frame = 0
+
+function positionPanel() {
+  const el = panel.value
+  const selected = session.selectedTower
+  const point = selected && props.project?.(selected.x, selected.y)
+  if (el && point) {
+    const parent = el.offsetParent?.getBoundingClientRect()
+    const leftEdge = parent?.left ?? 0
+    const topEdge = parent?.top ?? 0
+    const gap = 36
+    const width = el.offsetWidth
+    const height = el.offsetHeight
+    const x = point.x + gap + width <= window.innerWidth ? point.x + gap : point.x - gap - width
+    el.style.left = `${Math.max(0, Math.min(window.innerWidth - width, x)) - leftEdge}px`
+    el.style.top = `${Math.max(0, Math.min(window.innerHeight - height, point.y - height / 2)) - topEdge}px`
+    el.style.visibility = 'visible'
+  } else if (el && props.project) {
+    el.style.visibility = 'hidden'
+  }
+  frame = requestAnimationFrame(positionPanel)
+}
+onMounted(() => {
+  frame = requestAnimationFrame(positionPanel)
+})
+onBeforeUnmount(() => cancelAnimationFrame(frame))
 
 const session = useBattleSession()
 const tower = computed(() => session.selectedTower)
@@ -36,7 +58,7 @@ const rankTitle = computed(() =>
   tower.value ? t.tower.rank.replace('{name}', t.ranks[RANKS[tower.value.rank]!.id]) : '',
 )
 const sellTitle = computed(() =>
-  tower.value ? t.tower.sell.replace('{n}', String(sellRefund(tower.value.invested))) : '',
+  tower.value ? t.tower.sell.replace('{n}', String(tower.value.sellRefund)) : '',
 )
 // кнопка остаётся активной (без денег улучшение встанет в очередь), но выглядит «не по карману»
 const poor = computed(() => upgrade.value !== null && session.money < upgrade.value)
@@ -82,7 +104,7 @@ function cancel() {
 </script>
 
 <template>
-  <aside v-if="tower && stats" class="panel" data-testid="tower-panel">
+  <aside v-if="tower && stats" ref="panel" class="panel" data-testid="tower-panel">
     <header class="head">
       <UiIcon :name="tower.type" :size="24" class="ico" />
       <h3>{{ t.towers[tower.type] }}</h3>
@@ -175,7 +197,7 @@ function cancel() {
         @click="cmd('sellTower')"
       >
         <UiIcon name="sell" :size="14" />
-        {{ t.tower.sellShort.replace('{n}', String(sellRefund(tower.invested))) }}
+        {{ t.tower.sellShort.replace('{n}', String(tower.sellRefund)) }}
       </UiButton>
     </div>
   </aside>
@@ -184,9 +206,8 @@ function cancel() {
 <style scoped>
 .panel {
   position: absolute;
-  right: var(--safe-right);
-  /* высота HUD + зазор */
-  top: calc(var(--safe-top) + var(--hud-h) + var(--gap));
+  left: 0;
+  top: 0;
   width: 15rem;
   display: flex;
   flex-direction: column;
@@ -294,8 +315,8 @@ h3 {
 .actions :deep(.btn:first-child) {
   flex: 1;
   gap: 4px;
-  padding: 0 6px;
-  white-space: nowrap;
+  padding: 2px 6px;
+  white-space: normal;
   font-size: var(--fs-sm);
 }
 .actions :deep(.btn:last-child) {

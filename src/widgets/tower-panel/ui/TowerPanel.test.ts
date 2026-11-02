@@ -16,6 +16,7 @@ const tower = {
   xp: 0,
   rank: 0,
   invested: 100,
+  sellRefund: 100,
   cooldown: 0,
   priority: 'first',
 } as TowerState
@@ -32,6 +33,10 @@ describe('TowerPanel', () => {
     s.selectedTower = tower
     const dispatch = vi.spyOn(s, 'dispatch')
     const w = mount(TowerPanel)
+    expect(w.get('[data-testid=tower-sell]').text()).toContain('100')
+    s.selectedTower = { ...tower, sellRefund: 70 }
+    await w.vm.$nextTick()
+    expect(w.get('[data-testid=tower-sell]').text()).toContain('70')
     await w.get('[data-testid=tower-upgrade]').trigger('click')
     await w.get('[data-testid=tower-sell]').trigger('click')
     await w.get('[data-testid=prio-strongest]').trigger('click')
