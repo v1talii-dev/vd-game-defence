@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { gsap } from 'gsap'
 import { useRoute } from 'vue-router'
 import { LEVELS, type LevelConfig } from '@/entities/level'
 import { useProgressStore } from '@/entities/progress'
@@ -10,6 +11,36 @@ const progress = useProgressStore()
 const route = useRoute()
 // выбранный уровень = предбоевой экран
 const selected = ref<LevelConfig | null>(null)
+
+let briefingContext: gsap.Context | undefined
+let briefingDone: (() => void) | undefined
+
+function stopBriefingEnter() {
+  const context = briefingContext
+  const done = briefingDone
+  briefingContext = undefined
+  briefingDone = undefined
+  context?.revert()
+  done?.()
+}
+
+function enterBriefing(element: Element, done: () => void) {
+  stopBriefingEnter()
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    done()
+    return
+  }
+  briefingDone = done
+  briefingContext = gsap.context(() => {
+    gsap.fromTo(
+      element,
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', onComplete: stopBriefingEnter },
+    )
+  })
+}
+
+onBeforeUnmount(stopBriefingEnter)
 
 const fmt = (s: string, v: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k: string) => String(v[k]))
@@ -90,30 +121,32 @@ const newTowers = computed(() => {
       </li>
     </ul>
 
-    <UiPanel v-else class="brief" data-testid="level-briefing-screen">
-      <section>
-        <h2>{{ t.campaign.briefing }}</h2>
-        <p v-for="k in selected.briefing" :key="k" data-testid="level-briefing">{{ tr(k) }}</p>
-      </section>
-      <section>
-        <h2>{{ t.campaign.towers }}</h2>
-        <ul class="towers">
-          <li
-            v-for="tw in selected.allowedTowers"
-            :key="tw"
-            :class="{ fresh: newTowers.has(tw) }"
-            :data-testid="`level-tower-${tw}`"
-          >
-            <UiIcon :name="tw" :size="32" />
-            <span>{{ t.towers[tw] }}</span>
-            <em v-if="newTowers.has(tw)" class="badge">{{ t.campaign.newTower }}</em>
-          </li>
-        </ul>
-        <UiButton size="lg" :to="`/battle/${selected.id}`" data-testid="level-start">
-          {{ t.campaign.start }}
-        </UiButton>
-      </section>
-    </UiPanel>
+    <Transition :css="false" @enter="enterBriefing" @enter-cancelled="stopBriefingEnter">
+      <UiPanel v-if="selected" class="brief" data-testid="level-briefing-screen">
+        <section>
+          <h2>{{ t.campaign.briefing }}</h2>
+          <p v-for="k in selected.briefing" :key="k" data-testid="level-briefing">{{ tr(k) }}</p>
+        </section>
+        <section>
+          <h2>{{ t.campaign.towers }}</h2>
+          <ul class="towers">
+            <li
+              v-for="tw in selected.allowedTowers"
+              :key="tw"
+              :class="{ fresh: newTowers.has(tw) }"
+              :data-testid="`level-tower-${tw}`"
+            >
+              <UiIcon :name="tw" :size="32" />
+              <span>{{ t.towers[tw] }}</span>
+              <em v-if="newTowers.has(tw)" class="badge">{{ t.campaign.newTower }}</em>
+            </li>
+          </ul>
+          <UiButton size="lg" :to="`/battle/${selected.id}`" data-testid="level-start">
+            {{ t.campaign.start }}
+          </UiButton>
+        </section>
+      </UiPanel>
+    </Transition>
   </main>
 </template>
 

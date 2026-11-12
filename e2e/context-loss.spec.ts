@@ -12,11 +12,32 @@ test('потеря WebGL-контекста: сообщение, затем во
     ext.loseContext()
   })
   await expect(page.getByTestId('gl-lost')).toBeVisible()
+  const lostTick = await page.evaluate(() => window.__game!.state!.tick)
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      }),
+  )
+  expect(await page.evaluate(() => window.__game!.state!.tick)).toBe(lostTick)
   await page.evaluate(() =>
     (window as unknown as { __ext: { restoreContext(): void } }).__ext.restoreContext(),
   )
   await expect(page.getByTestId('gl-lost')).toHaveCount(0)
   const tick0 = await page.evaluate(() => window.__game!.state!.tick)
   await expect.poll(() => page.evaluate(() => window.__game!.state!.tick)).toBeGreaterThan(tick0)
+  expect(errors).toEqual([])
+
+  // Контекстная пауза не должна сбрасывать паузу, включённую самим игроком.
+  await page.evaluate(() => {
+    window.__game!.session.paused = true
+    ;(window as unknown as { __ext: { loseContext(): void } }).__ext.loseContext()
+  })
+  await expect(page.getByTestId('gl-lost')).toBeVisible()
+  await page.evaluate(() =>
+    (window as unknown as { __ext: { restoreContext(): void } }).__ext.restoreContext(),
+  )
+  await expect(page.getByTestId('gl-lost')).toHaveCount(0)
+  expect(await page.evaluate(() => window.__game!.session.paused)).toBe(true)
   expect(errors).toEqual([])
 })

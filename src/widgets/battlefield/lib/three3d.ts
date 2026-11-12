@@ -3,6 +3,7 @@ import {
   AmbientLight,
   BoxGeometry,
   CircleGeometry,
+  Color,
   ConeGeometry,
   DirectionalLight,
   type Fog,
@@ -22,7 +23,10 @@ import { ENEMIES, type EnemyState } from '@/entities/enemy'
 import type { LevelData } from '@/entities/level'
 import { projectilePosition, type ProjectileState } from '@/entities/projectile'
 import { TOWERS, towerStats } from '@/entities/tower'
-import { createCameraRig, FOG_COLOR, loadGlbParts } from '@/shared/lib/three'
+import { createCameraRig, FOG_COLOR, loadGlbParts, pickQuality } from '@/shared/lib/three'
+import { createBattleFrame } from './three/frame'
+import { createDoneEffect } from './three/doneEffect'
+import { createVisualWorld } from './three/visualWorld'
 import { stressSetup } from './stress'
 import { createDebug3d } from './three/debug3d'
 import { createEffects } from './three/effects'
@@ -79,7 +83,16 @@ export interface ThreeBattle {
   ready(): boolean
   /** WebGL-ресурсы и draw calls (для отладки и замеров) */
   /** признаки рендера для e2e: идёт показ стрелок пути, радиус кольца-предпросмотра */
-  fxState(): { arrowsActive: boolean; arrowStarts: number; previewRange: number | null }
+  fxState(): {
+    arrowsActive: boolean
+    arrowStarts: number
+    previewRange: number | null
+    quality: 'high' | 'low'
+    composerEnabled: boolean
+    quarksParticles: number
+    quarksSystems: number
+    rapierReady: boolean
+  }
   info(): { geometries: number; textures: number; calls: number; triangles: number }
 }
 
@@ -90,11 +103,19 @@ export function createThreeBattle(
 ): ThreeBattle {
   const session = useBattleSession()
   const debugOn = new URLSearchParams(window.location.search).get('debug') === '1'
-  const renderer = new WebGLRenderer({ antialias: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  const quality = pickQuality({
+    coarsePointer: window.matchMedia?.('(pointer: coarse)').matches ?? false,
+    search: window.location.search,
+  })
+  // High AA belongs to composer; low deliberately has no MSAA.
+  const renderer = new WebGLRenderer({ antialias: false })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.dprCap))
   renderer.setClearColor(FOG_COLOR)
   host.appendChild(renderer.domElement)
   const scene = new Scene()
+  // Composer clears offscreen buffers before renderer.render updates clear-color encoding.
+  // An explicit scene background forces the clear in the current target's color space.
+  scene.background = new Color(FOG_COLOR)
   const rig = createCameraRig(1, level.width, level.height)
   scene.add(new AmbientLight(0xffffff, 0.8))
   const sun = new DirectionalLight(0xffffff, 1.2)
@@ -126,6 +147,12 @@ export function createThreeBattle(
   })
   const hud = createHud(scene, rig.camera, disposables)
   const fx = createEffects(scene, disposables)
+  const done = createDoneEffect(scene, quality)
+  const visualWorld = createVisualWorld(quality)
+  let asyncError: unknown
+  void visualWorld.ready.catch((error: unknown) => {
+    if (alive) asyncError = error instanceof Error ? error : new Error(String(error))
+  })
   const buildable = new Set(level.buildable.map((c) => `${c.x},${c.y}`))
   const input = attachInput3d(renderer.domElement, rig, session, buildable)
   // ghost-превью постройки: подсветка клетки (зелёная/красная) и модель башни
@@ -218,7 +245,7 @@ export function createThreeBattle(
   const offs: (() => void)[] = []
   function flashTower(id: number) {
     const t = session.battle?.state.towers.find((x) => x.id === id)
-    if (t) fx.spawn('done', t.x, PAD_H + 0.4, t.y)
+    if (t) done.spawn(t.x, PAD_H + 0.4, t.y)
   }
   const battle0 = session.battle
   if (battle0 && opts.stress) for (const cmd of stressSetup(level.buildable)) battle0.dispatch(cmd)
@@ -242,7 +269,7 @@ export function createThreeBattle(
   function frame(dtMs: number) {
     const battle = session.battle
     if (!battle) return
-    const active = !session.paused && !session.outcome
+    const active = !lost && !session.paused && !session.outcome
     const alpha = active ? session.advance(dtMs) : 1
     const s = battle.state
     frameNo++
@@ -437,6 +464,7 @@ export function createThreeBattle(
 
     arrows.update(dtMs / 1000)
     fx.update(active ? dtMs * session.speed : 0)
+    done.update(active ? (dtMs / 1000) * session.speed : 0)
     models.end()
     hud.end()
     if (dbg) {
@@ -447,14 +475,15 @@ export function createThreeBattle(
       )
     }
     if (lost) return
-    renderer.render(scene, rig.camera)
+    renderFrame.render(dtMs / 1000)
     rendered = true
   }
 
+  let renderFrame = createBattleFrame(renderer, scene, rig.camera, quality)
   const resize = () => {
     const w = host.clientWidth || 1
     const h = host.clientHeight || 1
-    renderer.setSize(w, h)
+    renderFrame.resize(w, h, window.devicePixelRatio)
     rig.setViewport(w, h)
   }
   const ro = new ResizeObserver(resize)
@@ -464,10 +493,16 @@ export function createThreeBattle(
   let last = performance.now()
   let raf = 0
   const loop = (now: number) => {
-    raf = requestAnimationFrame(loop)
     const dt = Math.min(100, now - last)
     last = now
-    frame(dt)
+    try {
+      if (asyncError) throw asyncError
+      frame(dt)
+    } catch (error) {
+      session.paused = true
+      throw error // surface shader/integration/init errors; never silently downgrade high
+    }
+    raf = requestAnimationFrame(loop)
   }
   raf = requestAnimationFrame(loop)
 
@@ -475,10 +510,16 @@ export function createThreeBattle(
   let lost = false
   const onLost = (ev: Event) => {
     ev.preventDefault()
+    // `lost` gates advance above; keep the user's pause state intact for restoration.
     lost = true
     opts.onContextLost?.()
   }
   const onRestored = () => {
+    // Three restores scene buffers; rebuild postprocessing targets/passes explicitly.
+    renderFrame.dispose()
+    renderFrame = createBattleFrame(renderer, scene, rig.camera, quality)
+    resize()
+    last = performance.now()
     lost = false
     opts.onContextRestored?.()
   }
@@ -486,6 +527,7 @@ export function createThreeBattle(
   renderer.domElement.addEventListener('webglcontextrestored', onRestored)
 
   const dispose = () => {
+    if (!alive) return
     alive = false
     renderer.domElement.removeEventListener('webglcontextlost', onLost)
     renderer.domElement.removeEventListener('webglcontextrestored', onRestored)
@@ -494,6 +536,9 @@ export function createThreeBattle(
     input.destroy()
     for (const off of offs) off()
     dbg?.dispose()
+    done.dispose()
+    visualWorld.dispose()
+    renderFrame.dispose()
     for (const d of disposables) d.dispose()
     renderer.forceContextLoss()
     renderer.domElement.remove()
@@ -507,6 +552,11 @@ export function createThreeBattle(
       arrowsActive: arrows.active(),
       arrowStarts: arrows.starts(),
       previewRange,
+      quality: quality.level,
+      composerEnabled: quality.level === 'high',
+      quarksParticles: done.state().particles,
+      quarksSystems: done.state().systems,
+      rapierReady: visualWorld.isReady(),
     }),
     info: () => ({ ...renderer.info.memory, ...renderer.info.render }),
   }

@@ -29,6 +29,7 @@ export interface GameApi {
   } | null
   ready: boolean
   session: {
+    paused: boolean
     pendingCell: Cell | null
     buildType: string | null
     selectedTowerId: number | null
@@ -42,7 +43,16 @@ export interface GameApi {
   setSpeed(x: 1 | 2 | 8): void
   /** центр клетки в CSS-пикселях страницы */
   cellToScreen(x: number, y: number): { x: number; y: number }
-  fxState(): { arrowsActive: boolean; arrowStarts: number; previewRange: number | null }
+  fxState(): {
+    arrowsActive: boolean
+    arrowStarts: number
+    previewRange: number | null
+    quality: 'high' | 'low'
+    composerEnabled: boolean
+    quarksParticles: number
+    quarksSystems: number
+    rapierReady: boolean
+  }
   glInfo(): { geometries: number; textures: number; calls: number; triangles: number }
   setCamera(p: { x?: number; y?: number; zoom?: number; yaw?: number }): void
 }
