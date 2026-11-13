@@ -35,7 +35,14 @@ const _c = new Color()
 
 export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: Disposables) {
   const make = (geo: PlaneGeometry | ShapeGeometry, color: number, order: number) => {
-    const mat = new MeshBasicMaterial({ color, side: DoubleSide, depthTest: false })
+    // Transparent/no depth write keeps HUD out of N8AO and particle occlusion.
+    const mat = new MeshBasicMaterial({
+      color,
+      side: DoubleSide,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    })
     const mesh = new InstancedMesh(geo, mat, CAP)
     mesh.count = 0
     mesh.frustumCulled = false
@@ -113,6 +120,7 @@ export function createHud(scene: Scene, camera: PerspectiveCamera, disposables: 
         if (u > vData.x && vData.x >= 0.0) alpha = mix(0.45, 0.6, band);
         if (r < 0.46) col = vec3(0.05, 0.04, 0.03);
         gl_FragColor = vec4(col, alpha * disc);
+        #include <colorspace_fragment>
       }`,
   })
   const prog = new InstancedMesh(pGeo, pMat, PROG_CAP)
@@ -206,7 +214,8 @@ export const WAIT_COLOR = 0xffc83d
 export function writeProgress(arr: Float32Array, i: number, progress: number, color: number) {
   const o = i * 4
   arr[o] = Math.min(1, Math.max(0, progress))
-  arr[o + 1] = ((color >> 16) & 255) / 255
-  arr[o + 2] = ((color >> 8) & 255) / 255
-  arr[o + 3] = (color & 255) / 255
+  _c.setHex(color)
+  arr[o + 1] = _c.r
+  arr[o + 2] = _c.g
+  arr[o + 3] = _c.b
 }

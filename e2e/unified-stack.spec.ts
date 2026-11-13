@@ -44,6 +44,18 @@ for (const quality of ['high', 'low'] as const) {
       await expect
         .poll(() => page.locator('[data-testid=battlefield] canvas').evaluate((c) => c.clientWidth))
         .toBe(size.width)
+      const dpr = Math.min(
+        await page.evaluate(() => devicePixelRatio),
+        quality === 'high' ? 2 : 1.5,
+      )
+      await expect
+        .poll(() =>
+          page.locator('[data-testid=battlefield] canvas').evaluate((c) => {
+            const canvas = c as HTMLCanvasElement
+            return { width: canvas.width, height: canvas.height }
+          }),
+        )
+        .toEqual({ width: Math.floor(size.width * dpr), height: Math.floor(size.height * dpr) })
       const state = await page.evaluate(() => ({
         fx: window.__game!.fxState(),
         gl: window.__game!.glInfo(),
@@ -52,6 +64,11 @@ for (const quality of ['high', 'low'] as const) {
       expect(state.fx.quarksParticles).toBeLessThanOrEqual(quality === 'high' ? 16 : 7)
       expect(state.fx.quarksSystems).toBe(1)
       expect(state.gl.calls).toBeGreaterThan(0)
+      expect(state.gl.calls).toBeLessThanOrEqual(150)
+      await page.screenshot({
+        path: `test-results/s2-${quality}-${size.width}.png`,
+        style: '.overlay:has([data-testid="pause-menu"]) { visibility: hidden !important; }',
+      })
     }
     if (quality === 'low') expect(rapierRequests).toEqual([])
     expect(errors).toEqual([])

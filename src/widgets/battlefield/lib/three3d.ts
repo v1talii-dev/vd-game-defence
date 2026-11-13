@@ -488,6 +488,7 @@ export function createThreeBattle(
   }
   const ro = new ResizeObserver(resize)
   ro.observe(host)
+  window.addEventListener('resize', resize) // DPR can change without changing host CSS size.
   resize()
 
   let last = performance.now()
@@ -533,6 +534,7 @@ export function createThreeBattle(
     renderer.domElement.removeEventListener('webglcontextrestored', onRestored)
     cancelAnimationFrame(raf)
     ro.disconnect()
+    window.removeEventListener('resize', resize)
     input.destroy()
     for (const off of offs) off()
     dbg?.dispose()
