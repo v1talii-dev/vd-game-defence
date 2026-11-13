@@ -51,6 +51,7 @@ export interface GameApi {
     composerEnabled: boolean
     quarksParticles: number
     quarksSystems: number
+    quarksSpawned: Record<'flash' | 'spark' | 'puff' | 'explosion' | 'done' | 'flame', number>
     rapierReady: boolean
   }
   glInfo(): { geometries: number; textures: number; calls: number; triangles: number }

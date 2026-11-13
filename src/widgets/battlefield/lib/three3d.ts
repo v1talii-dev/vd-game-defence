@@ -25,11 +25,10 @@ import { projectilePosition, type ProjectileState } from '@/entities/projectile'
 import { TOWERS, towerStats } from '@/entities/tower'
 import { createCameraRig, FOG_COLOR, loadGlbParts, pickQuality } from '@/shared/lib/three'
 import { createBattleFrame } from './three/frame'
-import { createDoneEffect } from './three/doneEffect'
 import { createVisualWorld } from './three/visualWorld'
 import { stressSetup } from './stress'
 import { createDebug3d } from './three/debug3d'
-import { createEffects } from './three/effects'
+import { createEffects, type FxKind } from './three/effects'
 import { BUILD_COLOR, UPGRADE_COLOR, createHud } from './three/hud'
 import { attachInput3d } from './three/input3d'
 import { createPathArrows } from './three/pathArrows'
@@ -91,6 +90,7 @@ export interface ThreeBattle {
     composerEnabled: boolean
     quarksParticles: number
     quarksSystems: number
+    quarksSpawned: Record<FxKind, number>
     rapierReady: boolean
   }
   info(): { geometries: number; textures: number; calls: number; triangles: number }
@@ -146,8 +146,7 @@ export function createThreeBattle(
     world.applyGlbs(loaded)
   })
   const hud = createHud(scene, rig.camera, disposables)
-  const fx = createEffects(scene, disposables)
-  const done = createDoneEffect(scene, quality)
+  const fx = createEffects(scene, quality)
   const visualWorld = createVisualWorld(quality)
   let asyncError: unknown
   void visualWorld.ready.catch((error: unknown) => {
@@ -213,7 +212,7 @@ export function createThreeBattle(
     return { missile, bullet, shell, lx: 0, ly: 0, lz: 0, seen: 0 }
   }
 
-  function syncProjectile(p: ProjectileState, alpha: number) {
+  function syncProjectile(p: ProjectileState, alpha: number, active: boolean) {
     let r = projs.get(p.id)
     if (!r) {
       r = projPool.pop() ?? newProj()
@@ -234,7 +233,11 @@ export function createThreeBattle(
     body.position.set(q.x, q.z, q.y)
     body.lookAt(q2.x, q2.z, q2.y)
     // след ракеты: дымок каждые TRAIL_STEP клетки пути
-    if (p.kind === 'rocket' && Math.hypot(q.x - r.lx, q.y - r.ly, q.z - r.lz) > TRAIL_STEP) {
+    if (
+      active &&
+      p.kind === 'rocket' &&
+      Math.hypot(q.x - r.lx, q.y - r.ly, q.z - r.lz) > TRAIL_STEP / quality.trailMul
+    ) {
       fx.spawn('puff', q.x, q.z, q.y)
       r.lx = q.x
       r.ly = q.y
@@ -245,7 +248,7 @@ export function createThreeBattle(
   const offs: (() => void)[] = []
   function flashTower(id: number) {
     const t = session.battle?.state.towers.find((x) => x.id === id)
-    if (t) done.spawn(t.x, PAD_H + 0.4, t.y)
+    if (t) fx.spawn('done', t.x, PAD_H + RING_Y, t.y)
   }
   const battle0 = session.battle
   if (battle0 && opts.stress) for (const cmd of stressSetup(level.buildable)) battle0.dispatch(cmd)
@@ -453,7 +456,7 @@ export function createThreeBattle(
     for (const [id, a] of towerAim) if (a.seen !== frameNo) towerAim.delete(id)
 
     for (const p of s.projectiles) {
-      syncProjectile(p, alpha)
+      syncProjectile(p, alpha, active)
     }
     for (const [id, r] of projs) {
       if (r.seen === frameNo) continue
@@ -464,7 +467,6 @@ export function createThreeBattle(
 
     arrows.update(dtMs / 1000)
     fx.update(active ? dtMs * session.speed : 0)
-    done.update(active ? (dtMs / 1000) * session.speed : 0)
     models.end()
     hud.end()
     if (dbg) {
@@ -538,7 +540,7 @@ export function createThreeBattle(
     input.destroy()
     for (const off of offs) off()
     dbg?.dispose()
-    done.dispose()
+    fx.dispose()
     visualWorld.dispose()
     renderFrame.dispose()
     for (const d of disposables) d.dispose()
@@ -556,8 +558,9 @@ export function createThreeBattle(
       previewRange,
       quality: quality.level,
       composerEnabled: quality.level === 'high',
-      quarksParticles: done.state().particles,
-      quarksSystems: done.state().systems,
+      quarksParticles: fx.state().particles,
+      quarksSystems: fx.state().systems,
+      quarksSpawned: fx.state().spawned,
       rapierReady: visualWorld.isReady(),
     }),
     info: () => ({ ...renderer.info.memory, ...renderer.info.render }),
