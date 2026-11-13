@@ -1,0 +1,4 @@
+# Project MCP configuration for Codex on Windows; the browser opens visibly by default.
+[mcp_servers.playwright]
+command = "cmd"
+args = ["/d", "/c", "npx.cmd", "-y", "@playwright/mcp@latest"]

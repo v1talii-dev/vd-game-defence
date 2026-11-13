@@ -4,6 +4,8 @@
 
 Спецификация — [`docs/SPEC.md`](docs/SPEC.md). Лицензии ассетов — [`public/assets/LICENSES.md`](public/assets/LICENSES.md).
 
+Настройка Codex, проектные роли и Playwright MCP — [`.codex/README.md`](.codex/README.md). Инструкции для агента — [`AGENTS.md`](AGENTS.md).
+
 ## Запуск
 
 Нужен Node 24 (`.nvmrc`).

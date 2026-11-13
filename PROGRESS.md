@@ -21,8 +21,8 @@
 
 ## Настройки агента
 
-- Конфигурация проекта перенесена с Claude Code на pi: инструкции — `AGENTS.md`, агенты pi-subagents — `.pi/agents/`, Playwright MCP — `.pi/mcp.json`.
-- Playwright MCP подключён в текущей сессии; существующая вкладка используется для визуальных проверок.
+- Конфигурация проекта перенесена на Codex (2026-11-13): инструкции — `AGENTS.md`, шесть ролей — `.codex/agents/*.toml`, Playwright MCP — `.codex/config.toml`. Старые настройки удалены. Модель и reasoning наследуются от основной сессии; личная конфигурация не менялась. Запуск и проверка — `.codex/README.md`.
+- Codex CLI 0.168.0 видит проектный Playwright MCP и роли через `codex mcp list/get` и `codex debug prompt-input`. Доступность инструментов MCP проверять в новой сессии; текущая сессия использовала Playwright CLI.
 
 ## Следующий шаг
 
