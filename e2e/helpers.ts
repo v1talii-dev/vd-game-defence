@@ -53,6 +53,7 @@ export interface GameApi {
     quarksSystems: number
     quarksSpawned: Record<'flash' | 'spark' | 'puff' | 'explosion' | 'done' | 'flame', number>
     rapierReady: boolean
+    debris: number
   }
   glInfo(): { geometries: number; textures: number; calls: number; triangles: number }
   setCamera(p: { x?: number; y?: number; zoom?: number; yaw?: number }): void

@@ -86,6 +86,9 @@ for (const quality of ['high', 'low'] as const) {
     })
     await page.goto(`./?quality=${quality}#/battle/desert-base?seed=1&money=9999`)
     await page.waitForFunction(() => window.__game?.ready)
+    if (quality === 'high') {
+      await expect.poll(() => page.evaluate(() => window.__game!.fxState().rapierReady)).toBe(true)
+    }
     const initialSystems = await page.evaluate(() => window.__game!.fxState().quarksSystems)
     const towerId = await page.evaluate(() => {
       const g = window.__game!
@@ -116,17 +119,21 @@ for (const quality of ['high', 'low'] as const) {
       (id) => {
         const g = window.__game!
         const counts = g.fxState().quarksSpawned
-        return (
+        const complete = (
           counts.flash > 0 &&
           counts.spark > 0 &&
           counts.puff > 0 &&
           counts.explosion > 0 &&
           g.state!.towers.find((t) => t.id === id)?.phase === 'ruins'
         )
+        if (complete) g.session.paused = true
+        return complete
       },
       towerId,
       { timeout: 30_000 },
     )
+    const debris = await page.evaluate(() => window.__game!.fxState().debris)
+    expect(quality === 'high' ? debris > 0 : debris === 0).toBe(true)
     expect(await page.evaluate(() => window.__game!.fxState().quarksParticles)).toBeLessThanOrEqual(
       quality === 'high' ? 128 : 48,
     )
@@ -150,6 +157,7 @@ for (const quality of ['high', 'low'] as const) {
     )
     const reset = await page.evaluate(() => window.__game!.fxState())
     expect(reset.quarksParticles).toBe(0)
+    expect(reset.debris).toBe(0)
     expect(reset.quarksSystems).toBe(initialSystems)
     expect(Object.values(reset.quarksSpawned).every((count) => count === 0)).toBe(true)
     await page.evaluate(() => {
@@ -163,6 +171,44 @@ for (const quality of ['high', 'low'] as const) {
     expect(errors).toEqual([])
   })
 }
+
+test('выход во время загрузки Rapier не создаёт мир после уничтожения сцены', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let requested!: () => void
+  const requestStarted = new Promise<void>((resolve) => {
+    requested = resolve
+  })
+  let continued!: () => void
+  const requestContinued = new Promise<void>((resolve) => {
+    continued = resolve
+  })
+  await page.route('**/*rapier*.js', async (route) => {
+    requested()
+    await gate
+    await route.continue().catch(() => {})
+    continued()
+  })
+  await page.goto('./?quality=high#/battle/desert-base')
+  await requestStarted
+  await page.waitForFunction(() => window.__game?.ready)
+  expect(await page.evaluate(() => window.__game!.fxState().rapierReady)).toBe(false)
+  await page.evaluate(() => {
+    location.hash = '#/campaign'
+  })
+  await expect(page.getByTestId('level-card-desert-base')).toBeVisible()
+  release()
+  await requestContinued
+  await page.getByTestId('level-card-desert-base').click()
+  await page.getByTestId('level-start').click()
+  await page.waitForFunction(() => window.__game?.ready && window.__game.fxState().rapierReady)
+  expect(await page.evaluate(() => window.__game!.fxState().debris)).toBe(0)
+  expect(errors).toEqual([])
+})
 
 test('брифинг: reduced motion и быстрый возврат не оставляют скрытый слой', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })

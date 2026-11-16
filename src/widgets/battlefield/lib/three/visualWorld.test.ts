@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock('@dimforge/rapier3d-compat', () => ({
   init: mocks.init,
+  ColliderDesc: { cuboid: () => ({ setTranslation: () => ({}) }) },
   World: class {
     constructor(gravity: unknown) {
       mocks.world(gravity)
@@ -15,6 +16,7 @@ vi.mock('@dimforge/rapier3d-compat', () => ({
     free() {
       mocks.free()
     }
+    createCollider() {}
   },
 }))
 beforeEach(() => {
@@ -38,6 +40,7 @@ it('low never initializes Rapier; late initialization cannot attach a disposed w
   low.dispose()
   const late = createVisualWorld(QUALITY_PROFILES.high)
   await vi.waitFor(() => expect(mocks.init).toHaveBeenCalledTimes(1))
+  late.spawn(1, 1, 1)
   late.dispose()
   finish()
   await late.ready

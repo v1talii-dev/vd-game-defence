@@ -92,6 +92,7 @@ export interface ThreeBattle {
     quarksSystems: number
     quarksSpawned: Record<FxKind, number>
     rapierReady: boolean
+    debris: number
   }
   info(): { geometries: number; textures: number; calls: number; triangles: number }
 }
@@ -147,7 +148,7 @@ export function createThreeBattle(
   })
   const hud = createHud(scene, rig.camera, disposables)
   const fx = createEffects(scene, quality)
-  const visualWorld = createVisualWorld(quality)
+  const visualWorld = createVisualWorld(quality, scene)
   let asyncError: unknown
   void visualWorld.ready.catch((error: unknown) => {
     if (alive) asyncError = error instanceof Error ? error : new Error(String(error))
@@ -265,7 +266,10 @@ export function createThreeBattle(
         fx.spawn(e.kind === 'bullet' ? 'spark' : 'explosion', e.x, e.z, e.y),
       ),
       // руины: вспышка на месте разрушения
-      battle0.on('towerDestroyed', (e) => fx.spawn('explosion', e.x, PAD_H + 0.3, e.y)),
+      battle0.on('towerDestroyed', (e) => {
+        fx.spawn('explosion', e.x, PAD_H + 0.3, e.y)
+        visualWorld.spawn(e.x, PAD_H + 0.5, e.y)
+      }),
     )
   }
 
@@ -467,6 +471,7 @@ export function createThreeBattle(
 
     arrows.update(dtMs / 1000)
     fx.update(active ? dtMs * session.speed : 0)
+    visualWorld.update(active ? (dtMs * session.speed) / 1000 : 0)
     models.end()
     hud.end()
     if (dbg) {
@@ -562,6 +567,7 @@ export function createThreeBattle(
       quarksSystems: fx.state().systems,
       quarksSpawned: fx.state().spawned,
       rapierReady: visualWorld.isReady(),
+      debris: visualWorld.count(),
     }),
     info: () => ({ ...renderer.info.memory, ...renderer.info.render }),
   }
