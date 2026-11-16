@@ -1,6 +1,6 @@
 # Лицензии ассетов
 
-Игра без звука; 3D-сцена рисуется примитивами без внешних текстур. Ассеты ниже — шрифты и карта.
+Игра без звука; 3D-сцена использует GLB-модели с цветами вершин без внешних текстур. Ниже перечислены шрифты, карты и модели.
 
 ## Шрифты интерфейса — `fonts/` (SIL Open Font License 1.1)
 
@@ -15,23 +15,20 @@
 
 ## Карты — `maps/`
 
-`desert-base.tmj` — собственная разработка проекта.
+`desert-base.tmj`, `stone-pass.tmj` — собственная разработка проекта.
 
 ## 3D-модели башен, техники и декора — `models/` (CC0 1.0)
 
-Источники (лицензия CC0 подтверждена на страницах паков 2026-10-22, в архивах есть License.txt):
-Kenney Tower Defense Kit 2.1 (https://kenney.nl/assets/tower-defense-kit) и Kenney Car Kit (https://kenney.nl/assets/car-kit), автор Kenney (www.kenney.nl). Исходники не коммитятся (`tools/models/_src/`), сборка — `tools/models/build_models.py` (Blender).
+Источник используемых внешних деталей — Kenney Tower Defense Kit 2.1 (https://kenney.nl/assets/tower-defense-kit), автор Kenney (www.kenney.nl). Лицензия CC0 подтверждена 2026-10-22, в исходном паке есть `License.txt`. Исходники не коммитятся (`tools/models/_src/tower-defense-kit/`), сборка декора — `tools/models/build_models.py` (Blender). Kenney Car Kit в актуальной генерации не используется.
 
 | Файл | Исходные части | Что изменено |
 |---|---|---|
 | enemy_technical.glb, enemy_tank.glb, enemy_boss.glb | собственные процедурные модели проекта (`tools/models/build_enemies.py`, CC0), внешних деталей нет | — |
 | deco_tree.glb, deco_rock.glb | detail-tree-large, detail-rocks-large (Kenney TD) | перекраска, масштаб, decimate |
 
-Quaternius Animated Tanks (CC0, Google Drive) не использован: автоскачивание невозможно (ссылка на странице https://quaternius.com/packs/animatedtanks.html), при желании скачать вручную.
-
 ## Оригинальные 3D-модели проекта — `models/` (CC0 1.0)
 
-tower_machinegun.glb, tower_rocket.glb (`tools/models/build_towers.py`), enemy_grunt.glb, enemy_grenadier.glb, enemy_drone.glb, deco_ruin.glb — оригинальные работы проекта, смоделированы скриптами Blender (`tools/models/pehota/*.py`) из примитивов. Лицензия CC0 1.0, внешних ассетов и заимствованных форм нет.
+tower_machinegun.glb, tower_rocket.glb (`tools/models/build_towers.py`), ruins_machinegun.glb, ruins_rocket.glb (`tools/models/build_ruins.py`), tower_flamethrower.glb (`tools/models/build_flamethrower.py`), enemy_grunt.glb, enemy_grenadier.glb, enemy_drone.glb, enemy_runner.glb, enemy_shield.glb, deco_ruin.glb (`tools/models/pehota/*.py`) — оригинальные работы проекта из примитивов Blender. Лицензия CC0 1.0, внешних ассетов и заимствованных форм нет. Огнемёт, бегун и щитоносец подготовлены для M14; наличие файлов не означает подключения игровой механики.
 
 ## PWA-иконки — `public/icons/` (CC0 1.0)
 

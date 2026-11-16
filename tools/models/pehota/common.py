@@ -3,7 +3,7 @@ import math, os, sys
 import bpy, bmesh
 from mathutils import Matrix, Vector
 
-OUT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "public", "assets", "models"))
+OUT = os.path.abspath(os.environ.get("MODELS_OUT_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "..", "public", "assets", "models")))
 
 
 def lin(c):

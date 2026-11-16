@@ -11,6 +11,11 @@ export const TOWER_GLB = {
   machineGun: s('tower_machinegun'),
   rocket: s('tower_rocket'),
 }
+// Model-local muzzle tips (Y up); rocket uses the centre of its four launch tubes.
+export const TOWER_MUZZLE = {
+  machineGun: [0, 0.78, 0.6],
+  rocket: [0, 1.155, 0.387],
+} as const
 export const RUINS_GLB = {
   machineGun: s('ruins_machinegun'),
   rocket: s('ruins_rocket'),

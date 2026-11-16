@@ -8,7 +8,7 @@ from mathutils import Vector, Matrix
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SRC = os.path.join(ROOT, "tools", "models", "_src")
-OUT = os.path.join(ROOT, "public", "assets", "models")
+OUT = os.path.abspath(os.environ.get("MODELS_OUT_DIR", os.path.join(ROOT, "public", "assets", "models")))
 TD = os.path.join(SRC, "tower-defense-kit", "Models", "GLB format")
 CAR = os.path.join(SRC, "car-kit", "Models", "GLB format")
 os.makedirs(OUT, exist_ok=True)

@@ -21,9 +21,10 @@ import {
 import { useBattleSession } from '@/entities/battle'
 import { ENEMIES, type EnemyState } from '@/entities/enemy'
 import type { LevelData } from '@/entities/level'
-import { projectilePosition, type ProjectileState } from '@/entities/projectile'
+import type { ProjectileState } from '@/entities/projectile'
 import { TOWERS, towerStats } from '@/entities/tower'
 import { createCameraRig, FOG_COLOR, loadGlbParts, pickQuality } from '@/shared/lib/three'
+import type { Vec3 } from '@/shared/lib/sim'
 import { createBattleFrame } from './three/frame'
 import { createVisualWorld } from './three/visualWorld'
 import { stressSetup } from './stress'
@@ -33,7 +34,8 @@ import { BUILD_COLOR, UPGRADE_COLOR, createHud } from './three/hud'
 import { attachInput3d } from './three/input3d'
 import { createPathArrows } from './three/pathArrows'
 import { createModels, PAD_H } from './three/models'
-import { DECO_GLB, ENEMY_GLB, RUINS_GLB, TOWER_GLB } from './three/modelConfig'
+import { DECO_GLB, ENEMY_GLB, RUINS_GLB, TOWER_GLB, TOWER_MUZZLE } from './three/modelConfig'
+import { visualMuzzle, visualProjectilePosition } from './three/visualProjectile'
 import { buildWorld } from './three/world'
 
 const ENEMY_CAP = 256
@@ -196,6 +198,7 @@ export function createThreeBattle(
   const enemies = new Map<number, EnemyRec>()
   const towerAim = new Map<number, { yaw: number; seen: number }>()
   const projs = new Map<number, ProjRec>()
+  const visualStarts = new Map<number, Vec3>()
   const projPool: ProjRec[] = []
   let frameNo = 0
   let rendered = false
@@ -220,16 +223,18 @@ export function createThreeBattle(
       r.missile.visible = p.kind === 'rocket'
       r.bullet.visible = p.kind === 'bullet'
       r.shell.visible = p.kind === 'shell'
-      r.lx = p.fromX
-      r.ly = p.fromY
-      r.lz = p.fromZ
+      const from = visualStarts.get(p.id)
+      r.lx = from?.x ?? p.fromX
+      r.ly = from?.y ?? p.fromY
+      r.lz = from?.z ?? p.fromZ
       projs.set(p.id, r)
     }
     r.seen = frameNo
     // между тиками: t предыдущего тика + alpha * dt
     const t = Math.min(1, Math.max(0, p.t - p.dt * (1 - alpha)))
-    const q = projectilePosition(p, t)
-    const q2 = projectilePosition(p, Math.min(1, t + 0.02))
+    const from = visualStarts.get(p.id)
+    const q = visualProjectilePosition(p, t, from)
+    const q2 = visualProjectilePosition(p, Math.min(1, t + 0.02), from)
     const body = p.kind === 'rocket' ? r.missile : p.kind === 'shell' ? r.shell : r.bullet
     body.position.set(q.x, q.z, q.y)
     body.lookAt(q2.x, q2.z, q2.y)
@@ -259,8 +264,21 @@ export function createThreeBattle(
       battle0.on('towerBuilt', (e) => flashTower(e.towerId)),
       battle0.on('towerUpgraded', (e) => flashTower(e.towerId)),
       battle0.on('projectileFired', (e) => {
-        for (const p of battle0.state.projectiles)
-          if (p.id === e.projectileId) fx.spawn('flash', p.fromX, p.fromZ, p.fromY)
+        const p = battle0.state.projectiles.find((p) => p.id === e.projectileId)
+        if (!p) return
+        const tower = battle0.state.towers.find((tower) => tower.id === p.towerId)
+        const from = tower
+          ? visualMuzzle(
+              TOWER_MUZZLE[tower.type],
+              tower.x,
+              tower.y,
+              PAD_H,
+              Math.atan2(p.tx - tower.x, p.ty - tower.y) + TOWER_GLB[tower.type].yawFix,
+              (1 + 0.1 * (tower.level - 1)) * TOWER_GLB[tower.type].scale,
+            )
+          : { x: p.fromX, y: p.fromY, z: p.fromZ }
+        visualStarts.set(p.id, from)
+        fx.spawn('flash', from.x, from.z, from.y)
       }),
       battle0.on('projectileImpact', (e) =>
         fx.spawn(e.kind === 'bullet' ? 'spark' : 'explosion', e.x, e.z, e.y),
@@ -468,6 +486,7 @@ export function createThreeBattle(
       projs.delete(id)
       projPool.push(r)
     }
+    for (const id of visualStarts.keys()) if (!projs.has(id)) visualStarts.delete(id)
 
     arrows.update(dtMs / 1000)
     fx.update(active ? dtMs * session.speed : 0)
