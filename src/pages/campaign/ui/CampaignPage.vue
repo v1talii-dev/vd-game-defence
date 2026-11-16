@@ -1,46 +1,17 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { gsap } from 'gsap'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { LEVELS, type LevelConfig } from '@/entities/level'
 import { useProgressStore } from '@/entities/progress'
 import { t, tr } from '@/shared/i18n'
-import { UiButton, UiIcon, UiPanel } from '@/shared/ui'
+import { UiButton, UiIcon, UiPanel, useUiTransition } from '@/shared/ui'
 
 const progress = useProgressStore()
 const route = useRoute()
 // выбранный уровень = предбоевой экран
 const selected = ref<LevelConfig | null>(null)
 
-let briefingContext: gsap.Context | undefined
-let briefingDone: (() => void) | undefined
-
-function stopBriefingEnter() {
-  const context = briefingContext
-  const done = briefingDone
-  briefingContext = undefined
-  briefingDone = undefined
-  context?.revert()
-  done?.()
-}
-
-function enterBriefing(element: Element, done: () => void) {
-  stopBriefingEnter()
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    done()
-    return
-  }
-  briefingDone = done
-  briefingContext = gsap.context(() => {
-    gsap.fromTo(
-      element,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', onComplete: stopBriefingEnter },
-    )
-  })
-}
-
-onBeforeUnmount(stopBriefingEnter)
+const motion = useUiTransition()
 
 const fmt = (s: string, v: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k: string) => String(v[k]))
@@ -121,7 +92,7 @@ const newTowers = computed(() => {
       </li>
     </ul>
 
-    <Transition :css="false" @enter="enterBriefing" @enter-cancelled="stopBriefingEnter">
+    <Transition :css="false" v-bind="motion">
       <UiPanel v-if="selected" class="brief" data-testid="level-briefing-screen">
         <section>
           <h2>{{ t.campaign.briefing }}</h2>

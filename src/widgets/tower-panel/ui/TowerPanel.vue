@@ -4,10 +4,11 @@ import { useBattleSession } from '@/entities/battle'
 import { RANKS, towerStats, upgradeCost, upgradeTicks, type TargetPriority } from '@/entities/tower'
 import { TICK_RATE } from '@/shared/config'
 import { t } from '@/shared/i18n'
-import { UiButton, UiIcon } from '@/shared/ui'
+import { UiButton, UiIcon, useUiTransition } from '@/shared/ui'
 
 const props = defineProps<{ project?: (x: number, y: number) => { x: number; y: number } | null }>()
 const panel = ref<HTMLElement | null>(null)
+const motion = useUiTransition((el) => el.querySelector('.panel-content')!)
 let frame = 0
 
 function positionPanel() {
@@ -109,146 +110,157 @@ function cancel() {
 </script>
 
 <template>
-  <aside v-if="tower && stats" ref="panel" class="panel" data-testid="tower-panel">
-    <header class="head">
-      <UiIcon :name="tower.type" :size="24" class="ico" />
-      <h3>{{ t.towers[tower.type] }}</h3>
-      <span class="chevrons" data-testid="tower-rank" :title="rankTitle" :aria-label="rankTitle">
-        <UiIcon v-for="n in tower.rank" :key="n" name="chevron" :size="14" />
-      </span>
-      <span class="level" data-testid="tower-level">
-        {{ t.tower.level.replace('{n}', String(tower.level)) }}
-      </span>
-    </header>
-    <i class="bar" :title="xpTitle"><i :style="{ width: xpPct + '%' }" /></i>
-    <dl class="stats">
-      <div :title="t.tower.damage">
-        <UiIcon name="damage" :size="14" />
-        <dd>{{ Math.round(stats.damage) }}</dd>
+  <Transition :css="false" v-bind="motion">
+    <aside v-if="tower && stats" ref="panel" class="panel" data-testid="tower-panel">
+      <div class="panel-content">
+        <header class="head">
+          <UiIcon :name="tower.type" :size="24" class="ico" />
+          <h3>{{ t.towers[tower.type] }}</h3>
+          <span
+            class="chevrons"
+            data-testid="tower-rank"
+            :title="rankTitle"
+            :aria-label="rankTitle"
+          >
+            <UiIcon v-for="n in tower.rank" :key="n" name="chevron" :size="14" />
+          </span>
+          <span class="level" data-testid="tower-level">
+            {{ t.tower.level.replace('{n}', String(tower.level)) }}
+          </span>
+        </header>
+        <i class="bar" :title="xpTitle"><i :style="{ width: xpPct + '%' }" /></i>
+        <dl class="stats">
+          <div :title="t.tower.damage">
+            <UiIcon name="damage" :size="14" />
+            <dd>{{ Math.round(stats.damage) }}</dd>
+          </div>
+          <div :title="t.tower.fireRate">
+            <UiIcon name="rate" :size="14" />
+            <dd>{{ (TICK_RATE / stats.reloadTicks).toFixed(1) }}</dd>
+          </div>
+          <div :title="t.tower.range">
+            <UiIcon name="range" :size="14" />
+            <dd>{{ stats.range.toFixed(1) }}</dd>
+          </div>
+        </dl>
+        <div data-testid="tower-hp">
+          {{
+            t.tower.hp
+              .replace('{hp}', String(Math.ceil(tower.hp)))
+              .replace('{max}', String(tower.maxHp))
+          }}
+        </div>
+        <div v-if="tower.repairProgress != null" data-testid="tower-repair-progress">
+          {{ t.tower.repairing.replace('{n}', String(Math.round(tower.repairProgress * 100))) }}
+        </div>
+        <div v-if="phase !== 'ruins'" class="prio" role="group" :aria-label="t.tower.priority">
+          <button
+            v-for="p in priorities"
+            :key="p"
+            type="button"
+            :class="{ on: tower.priority === p }"
+            :aria-pressed="tower.priority === p"
+            :aria-label="t.priority[p]"
+            :data-testid="`prio-${p}`"
+            @click="session.dispatch({ type: 'setTargetPriority', towerId: tower.id, priority: p })"
+          >
+            {{ t.priorityShort[p] }}
+          </button>
+        </div>
+        <div v-if="showCancel" class="phase" data-testid="tower-phase">
+          <span>{{
+            tower.restoreOrder != null
+              ? t.tower.restoreQueued
+              : upgradeOrdered
+                ? t.tower.upgradeQueued
+                : t.tower[phase as 'queued']
+          }}</span>
+          <span v-if="busy" data-testid="tower-seconds">{{ secondsLeft }}</span>
+        </div>
+        <i
+          v-if="busy"
+          class="bar progress"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-valuenow="progressPct"
+          data-testid="tower-progress"
+        >
+          <i :style="{ width: progressPct + '%' }" />
+        </i>
+        <div v-if="phase === 'ruins'" class="actions">
+          <UiButton
+            v-if="tower.restoreOrder == null"
+            size="sm"
+            data-testid="tower-restore"
+            @click="cmd('restoreTower')"
+            >{{ t.tower.restore.replace('{n}', String(tower.restoreCost)) }}</UiButton
+          >
+          <UiButton
+            size="sm"
+            variant="secondary"
+            data-testid="tower-clear"
+            @click="cmd('clearRuins')"
+            >{{ t.tower.clear }}</UiButton
+          >
+        </div>
+        <UiButton
+          v-if="phase === 'active' || phase === 'upgrading'"
+          size="sm"
+          variant="secondary"
+          data-testid="tower-repair"
+          :disabled="
+            tower.repairCost <= 0 || tower.repairTicksLeft > 0 || session.money < tower.repairCost
+          "
+          @click="cmd('repairTower')"
+          >{{ t.tower.repair.replace('{n}', String(tower.repairCost)) }}</UiButton
+        >
+        <div class="actions">
+          <UiButton
+            v-if="showCancel"
+            size="sm"
+            variant="secondary"
+            :title="cancelTitle"
+            :aria-label="cancelTitle"
+            data-testid="tower-cancel"
+            @click="cancel"
+          >
+            <UiIcon name="close" :size="14" />
+            {{ t.tower.cancel }}
+          </UiButton>
+          <UiButton
+            v-if="phase === 'active' && !upgradeOrdered"
+            size="sm"
+            :disabled="upgrade === null"
+            :class="{ poor }"
+            :title="upgradeTitle"
+            data-testid="tower-upgrade"
+            @click="cmd('upgradeTower')"
+          >
+            <UiIcon name="upgrade" :size="14" />
+            {{
+              upgrade === null
+                ? t.tower.upgradeMax
+                : t.tower.upgrade.replace('{n}', String(upgrade))
+            }}
+          </UiButton>
+          <UiButton
+            v-if="phase === 'active' || phase === 'upgrading'"
+            size="sm"
+            variant="secondary"
+            data-testid="tower-sell"
+            :disabled="phase === 'upgrading'"
+            :title="phase === 'upgrading' ? t.tower.sellBlocked : sellTitle"
+            :aria-label="phase === 'upgrading' ? t.tower.sellBlocked : sellTitle"
+            @click="cmd('sellTower')"
+          >
+            <UiIcon name="sell" :size="14" />
+            {{ t.tower.sellShort.replace('{n}', String(tower.sellRefund)) }}
+          </UiButton>
+        </div>
       </div>
-      <div :title="t.tower.fireRate">
-        <UiIcon name="rate" :size="14" />
-        <dd>{{ (TICK_RATE / stats.reloadTicks).toFixed(1) }}</dd>
-      </div>
-      <div :title="t.tower.range">
-        <UiIcon name="range" :size="14" />
-        <dd>{{ stats.range.toFixed(1) }}</dd>
-      </div>
-    </dl>
-    <div data-testid="tower-hp">
-      {{
-        t.tower.hp
-          .replace('{hp}', String(Math.ceil(tower.hp)))
-          .replace('{max}', String(tower.maxHp))
-      }}
-    </div>
-    <div v-if="tower.repairProgress != null" data-testid="tower-repair-progress">
-      {{ t.tower.repairing.replace('{n}', String(Math.round(tower.repairProgress * 100))) }}
-    </div>
-    <div v-if="phase !== 'ruins'" class="prio" role="group" :aria-label="t.tower.priority">
-      <button
-        v-for="p in priorities"
-        :key="p"
-        type="button"
-        :class="{ on: tower.priority === p }"
-        :aria-pressed="tower.priority === p"
-        :aria-label="t.priority[p]"
-        :data-testid="`prio-${p}`"
-        @click="session.dispatch({ type: 'setTargetPriority', towerId: tower.id, priority: p })"
-      >
-        {{ t.priorityShort[p] }}
-      </button>
-    </div>
-    <div v-if="showCancel" class="phase" data-testid="tower-phase">
-      <span>{{
-        tower.restoreOrder != null
-          ? t.tower.restoreQueued
-          : upgradeOrdered
-            ? t.tower.upgradeQueued
-            : t.tower[phase as 'queued']
-      }}</span>
-      <span v-if="busy" data-testid="tower-seconds">{{ secondsLeft }}</span>
-    </div>
-    <i
-      v-if="busy"
-      class="bar progress"
-      role="progressbar"
-      aria-valuemin="0"
-      aria-valuemax="100"
-      :aria-valuenow="progressPct"
-      data-testid="tower-progress"
-    >
-      <i :style="{ width: progressPct + '%' }" />
-    </i>
-    <div v-if="phase === 'ruins'" class="actions">
-      <UiButton
-        v-if="tower.restoreOrder == null"
-        size="sm"
-        data-testid="tower-restore"
-        @click="cmd('restoreTower')"
-        >{{ t.tower.restore.replace('{n}', String(tower.restoreCost)) }}</UiButton
-      >
-      <UiButton
-        size="sm"
-        variant="secondary"
-        data-testid="tower-clear"
-        @click="cmd('clearRuins')"
-        >{{ t.tower.clear }}</UiButton
-      >
-    </div>
-    <UiButton
-      v-if="phase === 'active' || phase === 'upgrading'"
-      size="sm"
-      variant="secondary"
-      data-testid="tower-repair"
-      :disabled="
-        tower.repairCost <= 0 || tower.repairTicksLeft > 0 || session.money < tower.repairCost
-      "
-      @click="cmd('repairTower')"
-      >{{ t.tower.repair.replace('{n}', String(tower.repairCost)) }}</UiButton
-    >
-    <div class="actions">
-      <UiButton
-        v-if="showCancel"
-        size="sm"
-        variant="secondary"
-        :title="cancelTitle"
-        :aria-label="cancelTitle"
-        data-testid="tower-cancel"
-        @click="cancel"
-      >
-        <UiIcon name="close" :size="14" />
-        {{ t.tower.cancel }}
-      </UiButton>
-      <UiButton
-        v-if="phase === 'active' && !upgradeOrdered"
-        size="sm"
-        :disabled="upgrade === null"
-        :class="{ poor }"
-        :title="upgradeTitle"
-        data-testid="tower-upgrade"
-        @click="cmd('upgradeTower')"
-      >
-        <UiIcon name="upgrade" :size="14" />
-        {{
-          upgrade === null ? t.tower.upgradeMax : t.tower.upgrade.replace('{n}', String(upgrade))
-        }}
-      </UiButton>
-      <UiButton
-        v-if="phase === 'active' || phase === 'upgrading'"
-        size="sm"
-        variant="secondary"
-        data-testid="tower-sell"
-        :disabled="phase === 'upgrading'"
-        :title="phase === 'upgrading' ? t.tower.sellBlocked : sellTitle"
-        :aria-label="phase === 'upgrading' ? t.tower.sellBlocked : sellTitle"
-        @click="cmd('sellTower')"
-      >
-        <UiIcon name="sell" :size="14" />
-        {{ t.tower.sellShort.replace('{n}', String(tower.sellRefund)) }}
-      </UiButton>
-    </div>
-  </aside>
+    </aside>
+  </Transition>
 </template>
 
 <style scoped>
@@ -257,6 +269,9 @@ function cancel() {
   left: 0;
   top: 0;
   width: 15rem;
+  pointer-events: auto;
+}
+.panel-content {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -266,7 +281,6 @@ function cancel() {
   border: var(--panel-border);
   border-radius: var(--r-lg);
   pointer-events: auto;
-  animation: ui-pop-in 0.2s var(--ease);
 }
 .head {
   display: flex;

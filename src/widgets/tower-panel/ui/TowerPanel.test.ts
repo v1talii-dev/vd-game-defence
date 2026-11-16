@@ -2,6 +2,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { gsap } from 'gsap'
 import { useBattleSession } from '@/entities/battle'
 import type { TowerState } from '@/entities/tower'
 import TowerPanel from './TowerPanel.vue'
@@ -53,6 +54,30 @@ describe('TowerPanel', () => {
 
   it('пуста без выбранной башни', () => {
     expect(mount(TowerPanel).find('[data-testid=tower-panel]').exists()).toBe(false)
+  })
+
+  it('анимирует внутренний контейнер и очищает закрытие с пустым выбором', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
+    const s = useBattleSession()
+    const w = mount(TowerPanel, {
+      attachTo: document.body,
+      global: { stubs: { transition: false } },
+    })
+    s.selectedTower = tower
+    await w.vm.$nextTick()
+    const panel = w.get('[data-testid=tower-panel]').element as HTMLElement
+    const content = panel.querySelector('.panel-content')!
+    expect(gsap.getTweensOf(content)).toHaveLength(1)
+    expect(gsap.getTweensOf(panel)).toHaveLength(0)
+    gsap.getTweensOf(content)[0]!.progress(1)
+    s.selectedTower = null
+    await w.vm.$nextTick()
+    expect(panel.textContent).toContain('100/140')
+    expect(panel.inert).toBe(true)
+    w.unmount()
+    expect(gsap.getTweensOf(content)).toHaveLength(0)
+    expect(document.body.contains(panel)).toBe(false)
+    vi.unstubAllGlobals()
   })
 
   it('улучшение и продажа уходят командами', async () => {

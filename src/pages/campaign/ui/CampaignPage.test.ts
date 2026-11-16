@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { gsap } from 'gsap'
+import { nextTick } from 'vue'
 import CampaignPage from './CampaignPage.vue'
 
 const card = '[data-testid=level-card-desert-base]'
@@ -90,13 +91,19 @@ describe('CampaignPage: briefing transition', () => {
     })
   })
 
-  it('cancels an unfinished enter, removes the panel immediately and can reopen', async () => {
+  it('cancels an unfinished enter, makes the leaving panel inert and can reopen', async () => {
     const { page } = await renderPage()
     const panel = await openBriefing(page)
     const tween = gsap.getTweensOf(panel)[0]!
     tween.pause().progress(0.5)
 
     await page.get('[data-testid=level-back]').trigger('click')
+
+    expect(panel.style.pointerEvents).toBe('none')
+    expect(panel.inert).toBe(true)
+    expect(tween.isActive()).toBe(false)
+    gsap.getTweensOf(panel)[0]!.pause().progress(1)
+    await nextTick()
 
     expect(panel.isConnected).toBe(false)
     expect(document.querySelector(briefing)).toBeNull()
@@ -112,6 +119,8 @@ describe('CampaignPage: briefing transition', () => {
     const nextTween = gsap.getTweensOf(reopened)[0]!
     nextTween.pause().progress(1)
     await page.get('[data-testid=level-back]').trigger('click')
+    gsap.getTweensOf(reopened)[0]!.pause().progress(1)
+    await nextTick()
     expect(document.querySelector(briefing)).toBeNull()
   })
 
